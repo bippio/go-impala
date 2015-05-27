@@ -19,6 +19,7 @@ var (
 type Connection struct {
 	client  *impala.ImpalaServiceClient
 	handle  *beeswax.QueryHandle
+    transport thrift.TTransport
 	options Options
 }
 
@@ -33,7 +34,6 @@ func Connect(host string, port int, options Options) (*Connection, error) {
 	protocolFactory := thrift.NewTBinaryProtocolFactoryDefault()
 
 	transport := transportFactory.GetTransport(socket)
-	// defer transport.Close()
 
 	if err := transport.Open(); err != nil {
 		return nil, err
@@ -41,7 +41,7 @@ func Connect(host string, port int, options Options) (*Connection, error) {
 
 	client := impala.NewImpalaServiceClientFactory(transport, protocolFactory)
 
-	return &Connection{client, nil, options}, nil
+	return &Connection{client, nil, transport, options}, nil
 }
 
 func (c *Connection) isOpen() bool {
@@ -58,7 +58,8 @@ func (c *Connection) Close() error {
 			c.handle = nil
 		}
 
-		// TODO: c.client.Close() -- not sure the thrift way
+		c.transport.Close()
+        c.client = nil
 	}
 	return nil
 }
