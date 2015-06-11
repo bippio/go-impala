@@ -3,7 +3,7 @@ package impalathing
 import (
 	"fmt"
 	"git.apache.org/thrift.git/lib/go/thrift"
-	impala "github.com/koblas/impalathing/services/ImpalaService"
+	impala "github.com/koblas/impalathing/services/impalaservice"
 	"github.com/koblas/impalathing/services/beeswax"
 )
 

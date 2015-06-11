@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	impala "github.com/koblas/impalathing/services/ImpalaService"
+	impala "github.com/koblas/impalathing/services/impalaservice"
 	"github.com/koblas/impalathing/services/beeswax"
 )
 
