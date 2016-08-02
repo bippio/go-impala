@@ -249,11 +249,11 @@ func (r *rowSet) FetchAll() ([]map[string]interface{} ) {
 	for r.Next() {
 	  row := make(map[string]interface{})
 	  for i, val := range r.nextRow {
-		conv, err := r.convertRawValue(val, r.metadata.Schema.FieldSchemas[i].TypeA1)
+		conv, err := r.convertRawValue(val, r.metadata.Schema.FieldSchemas[i].Type)
 		if err != nil {
 		  fmt.Printf("%v\n", err)
 		}
-		row[r.metadata.Schema.FieldSchemas[i].Name] = conv 
+		row[r.metadata.Schema.FieldSchemas[i].Name] = conv
 	  }
 	  response = append(response, row)
 	}
