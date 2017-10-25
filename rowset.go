@@ -41,6 +41,7 @@ type RowSet interface {
 	Poll() (*Status, error)
 	Wait() (*Status, error)
 	FetchAll() []map[string]interface{}
+	MapScan(dest map[string]interface{}) error
 }
 
 // Represents job status, including success state and time the
@@ -270,5 +271,17 @@ func (r *rowSet) Columns() []string {
 	}
 
 	return r.columnNames
+}
+
+// MapScan scans a single Row into the dest map[string]interface{}.
+func (r *rowSet) MapScan(row map[string]interface{}) error {
+	for i, val := range r.nextRow {
+		conv, err := r.convertRawValue(val, r.metadata.Schema.FieldSchemas[i].Type)
+		if err != nil {
+			return err
+		}
+		row[r.metadata.Schema.FieldSchemas[i].Name] = conv
+	}
+	return nil
 }
 
