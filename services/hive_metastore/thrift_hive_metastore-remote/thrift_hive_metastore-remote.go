@@ -7,7 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"git.apache.org/thrift.git/lib/go/thrift"
-	"github.com/koblas/impalathing/services/hive_metastore"
+	"github.com/bippio/impalathing/services/hive_metastore"
 	"math"
 	"net"
 	"net/url"

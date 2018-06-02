@@ -14,7 +14,7 @@ import (
     "log"
     "fmt"
     "time"
-    "github.com/koblas/impalathing"
+    "github.com/bippio/impalathing"
 )
 
 func main() {
