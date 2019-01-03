@@ -7,7 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"git.apache.org/thrift.git/lib/go/thrift"
-	"github.com/bippio/impalathing/services/beeswax"
+	"github.com/bippio/go-impala/services/beeswax"
 	"math"
 	"net"
 	"net/url"

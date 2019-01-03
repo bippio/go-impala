@@ -3,8 +3,8 @@ package impalathing
 import (
 	"fmt"
 	"git.apache.org/thrift.git/lib/go/thrift"
-	impala "github.com/bippio/impalathing/services/impalaservice"
-	"github.com/bippio/impalathing/services/beeswax"
+	impala "github.com/bippio/go-impala/services/impalaservice"
+	"github.com/bippio/go-impala/services/beeswax"
 )
 
 type Options struct {

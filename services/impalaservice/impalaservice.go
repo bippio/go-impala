@@ -7,9 +7,9 @@ import (
 	"bytes"
 	"fmt"
 	"git.apache.org/thrift.git/lib/go/thrift"
-	"github.com/bippio/impalathing/services/beeswax"
-	"github.com/bippio/impalathing/services/cli_service"
-	"github.com/bippio/impalathing/services/status"
+	"github.com/bippio/go-impala/services/beeswax"
+	"github.com/bippio/go-impala/services/cli_service"
+	"github.com/bippio/go-impala/services/status"
 )
 
 // (needed to ensure safety because of naive import list construction.)
