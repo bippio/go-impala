@@ -1,6 +1,7 @@
 package impalathing
 
 import (
+	"errors"
 	"fmt"
 
 	"git.apache.org/thrift.git/lib/go/thrift"
@@ -38,6 +39,15 @@ func Connect(host string, port int, options *Options) (*Connection, error) {
 
 	var transport thrift.TTransport
 	if options.UseLDAP {
+
+		if options.Username == "" {
+			return nil, errors.New("Please provide username for LDAP auth")
+		}
+
+		if options.Password == "" {
+			return nil, errors.New("Please provide password for LDAP auth")
+		}
+
 		transport, err = sasl.NewTSaslTransport(socket, &sasl.Options{
 			Host:     host,
 			Username: options.Username,

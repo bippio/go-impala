@@ -12,13 +12,17 @@ import (
 	impala "github.com/bippio/go-impala/services/impalaservice"
 )
 
+type ColumnSchema struct {
+	Name string
+	Type string
+}
+
 type rowSet struct {
 	client  *impala.ImpalaServiceClient
 	handle  *beeswax.QueryHandle
 	options *Options
 
-	// columns    []*tcliservice.TColumnDesc
-	columnNames []string
+	columns []*ColumnSchema
 
 	offset  int
 	rowSet  *beeswax.Results
@@ -35,7 +39,7 @@ type rowSet struct {
 // have a valid thrift client, and the serialized Handle()
 // from the prior operation.
 type RowSet interface {
-	Columns() []string
+	Schema() []*ColumnSchema
 	Next() bool
 	Scan(dest ...interface{}) error
 	Poll() (*Status, error)
@@ -52,7 +56,7 @@ type Status struct {
 }
 
 func newRowSet(client *impala.ImpalaServiceClient, handle *beeswax.QueryHandle, options *Options) RowSet {
-	return &rowSet{client: client, handle: handle, options: options, columnNames: nil, offset: 0, rowSet: nil,
+	return &rowSet{client: client, handle: handle, options: options, columns: nil, offset: 0, rowSet: nil,
 		hasMore: true, ready: false, metadata: nil, nextRow: nil}
 }
 
@@ -143,9 +147,12 @@ func (r *rowSet) Next() bool {
 			if err != nil {
 				log.Printf("GetResultsMetadata failed: %v\n", err)
 			}
-		}
-		if len(r.columnNames) == 0 {
-			r.columnNames = resp.Columns
+
+			if len(r.columns) == 0 {
+				for _, fschema := range r.metadata.Schema.FieldSchemas {
+					r.columns = append(r.columns, &ColumnSchema{Name: fschema.Name, Type: fschema.Type})
+				}
+			}
 		}
 
 		r.hasMore = resp.HasMore
@@ -260,16 +267,16 @@ func (r *rowSet) FetchAll() []map[string]interface{} {
 	return response
 }
 
-// Returns the names of the columns for the given operation,
+// Returns the name and type of the columns for the given operation,
 // blocking if necessary until the information is available.
-func (r *rowSet) Columns() []string {
-	if r.columnNames == nil {
+func (r *rowSet) Schema() []*ColumnSchema {
+	if r.columns == nil {
 		if err := r.waitForSuccess(); err != nil {
 			return nil
 		}
 	}
 
-	return r.columnNames
+	return r.columns
 }
 
 // MapScan scans a single Row into the dest map[string]interface{}.
