@@ -2,13 +2,26 @@
 
 
 [[projects]]
+  digest = "1:21a774cd1c70bc7b328522ad415933eb1f329ad72773f4d0112210fc0dbccc55"
   name = "git.apache.org/thrift.git"
   packages = ["lib/go/thrift"]
+  pruneopts = ""
   revision = "53dd39833a08ce33582e5ff31fa18bb4735d6731"
+
+[[projects]]
+  branch = "v4"
+  digest = "1:5ce658604dd468ddbf81568aee7e04f27a4e8432c1ce204941be459807b1d64d"
+  name = "gopkg.in/freddierice/go-sasl.v4"
+  packages = ["."]
+  pruneopts = ""
+  revision = "ec45f97089cf4f3dffc06e782f0f3b8681e63b19"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "14a444fc0fb03980037cc22a47d68750f957462f23bb445c4f3fe4b7ec51049a"
+  input-imports = [
+    "git.apache.org/thrift.git/lib/go/thrift",
+    "gopkg.in/freddierice/go-sasl.v4",
+  ]
   solver-name = "gps-cdcl"
   solver-version = 1
