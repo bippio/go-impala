@@ -24,7 +24,7 @@ func main() {
     opts.Username = "<username>"
     opts.Password = "<password>"
 
-    con, err := impalathing.Connect(host, port, opts)
+    con, err := impalathing.Connect(host, port, &opts)
     if err != nil {
         log.Fatal(err)
     }
@@ -32,7 +32,7 @@ func main() {
     query, err := con.Query("<sql-query>")
 
     startTime := time.Now()
-    results := query.query.FetchAll()
+    results := query.FetchAll()
     log.Printf("Fetch %d rows(s) in %.2fs", len(results), time.Duration(time.Since(startTime)).Seconds())
 }
 
