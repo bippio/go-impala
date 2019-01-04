@@ -37,16 +37,3 @@ func main() {
 }
 
 ```
-
-## Building
-
-To build this project you must have libsasl2 installed.
-On Debian: 
-```bash
-sudo apt-get install libsasl2-dev
-```
-
-On Redhat:
-```bash
-sudo yum install cyrus-sasl-devel.x86_64
-```
