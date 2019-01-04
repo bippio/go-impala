@@ -8,20 +8,9 @@
   pruneopts = ""
   revision = "53dd39833a08ce33582e5ff31fa18bb4735d6731"
 
-[[projects]]
-  branch = "v4"
-  digest = "1:5ce658604dd468ddbf81568aee7e04f27a4e8432c1ce204941be459807b1d64d"
-  name = "gopkg.in/freddierice/go-sasl.v4"
-  packages = ["."]
-  pruneopts = ""
-  revision = "ec45f97089cf4f3dffc06e782f0f3b8681e63b19"
-
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  input-imports = [
-    "git.apache.org/thrift.git/lib/go/thrift",
-    "gopkg.in/freddierice/go-sasl.v4",
-  ]
+  input-imports = ["git.apache.org/thrift.git/lib/go/thrift"]
   solver-name = "gps-cdcl"
   solver-version = 1

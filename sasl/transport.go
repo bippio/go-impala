@@ -8,7 +8,6 @@ import (
 	"io/ioutil"
 
 	"git.apache.org/thrift.git/lib/go/thrift"
-	sasl "gopkg.in/freddierice/go-sasl.v4"
 )
 
 type TSaslTransport struct {
@@ -16,23 +15,8 @@ type TSaslTransport struct {
 	wbuf *bytes.Buffer
 
 	trans thrift.TTransport
-	sasl  *sasl.Client
+	sasl  Client
 }
-
-type Options struct {
-	Service  string
-	Host     string
-	Username string
-	Password string
-}
-
-// Mech is SASL mechanism token
-type Mech string
-
-// SASL mechanism tokens
-const (
-	MechPlain = "PLAIN"
-)
 
 // Status is SASL negotiation status
 type Status byte
@@ -47,15 +31,7 @@ const (
 )
 
 func NewTSaslTransport(t thrift.TTransport, opts *Options) (*TSaslTransport, error) {
-	sasl, err := sasl.NewClient(opts.Service, opts.Host, &sasl.Config{
-		Authname: opts.Username,
-		Password: opts.Password,
-		Username: opts.Username,
-	})
-
-	if err != nil {
-		return nil, err
-	}
+	sasl := NewClient(opts)
 
 	return &TSaslTransport{
 		trans: t,
@@ -172,6 +148,7 @@ func (t *TSaslTransport) RemainingBytes() (num_bytes uint64) {
 }
 
 func (t *TSaslTransport) Close() error {
+	t.sasl.Free()
 	return t.trans.Close()
 }
 
