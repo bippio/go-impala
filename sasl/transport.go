@@ -2,12 +2,13 @@ package sasl
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
 	"fmt"
 	"io"
 	"io/ioutil"
 
-	"git.apache.org/thrift.git/lib/go/thrift"
+	"github.com/apache/thrift/lib/go/thrift"
 )
 
 type TSaslTransport struct {
@@ -125,7 +126,7 @@ func (t *TSaslTransport) Write(buf []byte) (int, error) {
 	return t.wbuf.Write(buf)
 }
 
-func (t *TSaslTransport) Flush() error {
+func (t *TSaslTransport) Flush(ctx context.Context) error {
 
 	in, err := ioutil.ReadAll(t.wbuf)
 	if err != nil {
@@ -140,7 +141,7 @@ func (t *TSaslTransport) Flush() error {
 	t.trans.Write(payload)
 
 	t.wbuf.Reset()
-	return t.trans.Flush()
+	return t.trans.Flush(ctx)
 }
 
 func (t *TSaslTransport) RemainingBytes() (num_bytes uint64) {
@@ -163,7 +164,7 @@ func (t *TSaslTransport) negotiationSend(status Status, body []byte) error {
 		return err
 	}
 
-	if err := t.trans.Flush(); err != nil {
+	if err := t.trans.Flush(context.Background()); err != nil {
 		return err
 	}
 

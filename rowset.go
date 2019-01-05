@@ -1,6 +1,7 @@
 package impalathing
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -39,12 +40,12 @@ type rowSet struct {
 // have a valid thrift client, and the serialized Handle()
 // from the prior operation.
 type RowSet interface {
-	Schema() []*ColumnSchema
-	Next() bool
+	Schema(ctx context.Context) []*ColumnSchema
+	Next(ctx context.Context) bool
 	Scan(dest ...interface{}) error
-	Poll() (*Status, error)
-	Wait() (*Status, error)
-	FetchAll() []map[string]interface{}
+	Poll(ctx context.Context) (*Status, error)
+	Wait(ctx context.Context) (*Status, error)
+	FetchAll(ctx context.Context) []map[string]interface{}
 	MapScan(dest map[string]interface{}) error
 }
 
@@ -72,8 +73,8 @@ func (s *Status) IsComplete() bool {
 }
 
 // Issue a thrift call to check for the job's current status.
-func (r *rowSet) Poll() (*Status, error) {
-	state, err := r.client.GetState(r.handle)
+func (r *rowSet) Poll(ctx context.Context) (*Status, error) {
+	state, err := r.client.GetState(ctx, r.handle)
 
 	if err != nil {
 		return nil, fmt.Errorf("Error getting status: %v", err)
@@ -87,9 +88,9 @@ func (r *rowSet) Poll() (*Status, error) {
 }
 
 // Wait until the job is complete, one way or another, returning Status and error.
-func (r *rowSet) Wait() (*Status, error) {
+func (r *rowSet) Wait(ctx context.Context) (*Status, error) {
 	for {
-		status, err := r.Poll()
+		status, err := r.Poll(ctx)
 
 		if err != nil {
 			return nil, err
@@ -107,9 +108,9 @@ func (r *rowSet) Wait() (*Status, error) {
 	}
 }
 
-func (r *rowSet) waitForSuccess() error {
+func (r *rowSet) waitForSuccess(ctx context.Context) error {
 	if !r.ready {
-		status, err := r.Wait()
+		status, err := r.Wait(ctx)
 		if err != nil {
 			return err
 		}
@@ -126,8 +127,8 @@ func (r *rowSet) waitForSuccess() error {
 // complete, if necessary.
 // Returns true is a row is available to Scan(), and false if the
 // results are empty or any other error occurs.
-func (r *rowSet) Next() bool {
-	if err := r.waitForSuccess(); err != nil {
+func (r *rowSet) Next(ctx context.Context) bool {
+	if err := r.waitForSuccess(ctx); err != nil {
 		return false
 	}
 
@@ -136,14 +137,14 @@ func (r *rowSet) Next() bool {
 			return false
 		}
 
-		resp, err := r.client.Fetch(r.handle, false, 1000000)
+		resp, err := r.client.Fetch(ctx, r.handle, false, 1000000)
 		if err != nil {
 			log.Printf("FetchResults failed: %v\n", err)
 			return false
 		}
 
 		if r.metadata == nil {
-			r.metadata, err = r.client.GetResultsMetadata(r.handle)
+			r.metadata, err = r.client.GetResultsMetadata(ctx, r.handle)
 			if err != nil {
 				log.Printf("GetResultsMetadata failed: %v\n", err)
 			}
@@ -251,9 +252,9 @@ func (r *rowSet) convertRawValue(raw string, hiveType string) (interface{}, erro
 
 //Fetch all rows and convert to a []map[string]interface{} with
 //appropriate type conversion already carried out
-func (r *rowSet) FetchAll() []map[string]interface{} {
+func (r *rowSet) FetchAll(ctx context.Context) []map[string]interface{} {
 	response := make([]map[string]interface{}, 0)
-	for r.Next() {
+	for r.Next(ctx) {
 		row := make(map[string]interface{})
 		for i, val := range r.nextRow {
 			conv, err := r.convertRawValue(val, r.metadata.Schema.FieldSchemas[i].Type)
@@ -269,9 +270,9 @@ func (r *rowSet) FetchAll() []map[string]interface{} {
 
 // Returns the name and type of the columns for the given operation,
 // blocking if necessary until the information is available.
-func (r *rowSet) Schema() []*ColumnSchema {
+func (r *rowSet) Schema(ctx context.Context) []*ColumnSchema {
 	if r.columns == nil {
-		if err := r.waitForSuccess(); err != nil {
+		if err := r.waitForSuccess(ctx); err != nil {
 			return nil
 		}
 	}

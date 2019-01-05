@@ -29,10 +29,10 @@ func main() {
         log.Fatal(err)
     }
 
-    query, err := con.Query("<sql-query>")
+    query, err := con.Query(context.Background(), "<sql-query>")
 
     startTime := time.Now()
-    results := query.FetchAll()
+    results := query.FetchAll(context.Background())
     log.Printf("Fetch %d rows(s) in %.2fs", len(results), time.Duration(time.Since(startTime)).Seconds())
 }
 

@@ -1,10 +1,11 @@
 package impalathing
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
-	"git.apache.org/thrift.git/lib/go/thrift"
+	"github.com/apache/thrift/lib/go/thrift"
 	"github.com/bippio/go-impala/sasl"
 	"github.com/bippio/go-impala/services/beeswax"
 	impala "github.com/bippio/go-impala/services/impalaservice"
@@ -61,13 +62,14 @@ func Connect(host string, port int, options *Options) (*Connection, error) {
 		transport = thrift.NewTBufferedTransport(socket, options.BufferSize)
 	}
 
-	protocolFactory := thrift.NewTBinaryProtocolFactoryDefault()
+	protocol := thrift.NewTBinaryProtocol(transport, false, true)
 
 	if err := transport.Open(); err != nil {
 		return nil, err
 	}
 
-	client := impala.NewImpalaServiceClientFactory(transport, protocolFactory)
+	tclient := thrift.NewTStandardClient(protocol, protocol)
+	client := impala.NewImpalaServiceClient(tclient)
 
 	return &Connection{client, nil, transport, options}, nil
 }
@@ -76,10 +78,10 @@ func (c *Connection) isOpen() bool {
 	return c.client != nil
 }
 
-func (c *Connection) Close() error {
+func (c *Connection) Close(ctx context.Context) error {
 	if c.isOpen() {
 		if c.handle != nil {
-			_, err := c.client.Cancel(c.handle)
+			_, err := c.client.Cancel(ctx, c.handle)
 			if err != nil {
 				return err
 			}
@@ -92,13 +94,13 @@ func (c *Connection) Close() error {
 	return nil
 }
 
-func (c *Connection) Query(query string) (RowSet, error) {
+func (c *Connection) Query(ctx context.Context, query string) (RowSet, error) {
 	bquery := beeswax.Query{}
 
 	bquery.Query = query
 	bquery.Configuration = []string{}
 
-	handle, err := c.client.Query(&bquery)
+	handle, err := c.client.Query(ctx, &bquery)
 
 	if err != nil {
 		return nil, err

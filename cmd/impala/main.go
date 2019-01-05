@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -41,18 +42,19 @@ func main() {
 		log.Fatalf("Error connecting: %v", err)
 	}
 
-	query, err := con.Query(q)
+	ctx := context.Background()
 
+	query, err := con.Query(ctx, q)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	startTime := time.Now()
-	results := query.FetchAll()
+	results := query.FetchAll(ctx)
 	fmt.Printf("\nFetch %d rows(s) in %.2fs\n", len(results), time.Duration(time.Since(startTime)).Seconds())
 
 	var columns []string
-	for _, col := range query.Schema() {
+	for _, col := range query.Schema(ctx) {
 		columns = append(columns, col.Name)
 
 		fmt.Printf("%25s |", fmt.Sprintf("%s (%s)", col.Name, col.Type))
