@@ -2,8 +2,11 @@ package impalathing
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
+	"io/ioutil"
 
 	"github.com/apache/thrift/lib/go/thrift"
 	"github.com/bippio/go-impala/sasl"
@@ -12,6 +15,8 @@ import (
 )
 
 type Options struct {
+	UseTLS              bool
+	CACertPath          string
 	UseLDAP             bool
 	Username            string
 	Password            string
@@ -32,7 +37,31 @@ type Connection struct {
 }
 
 func Connect(host string, port int, options *Options) (*Connection, error) {
-	socket, err := thrift.NewTSocket(fmt.Sprintf("%s:%d", host, port))
+
+	addr := fmt.Sprintf("%s:%d", host, port)
+
+	var socket thrift.TTransport
+	var err error
+	if options.UseTLS {
+
+		if options.CACertPath == "" {
+			return nil, errors.New("Please provide CA certificate path")
+		}
+
+		caCert, err := ioutil.ReadFile(options.CACertPath)
+		if err != nil {
+			return nil, err
+		}
+
+		caCertPool := x509.NewCertPool()
+		caCertPool.AppendCertsFromPEM(caCert)
+
+		socket, err = thrift.NewTSSLSocket(addr, &tls.Config{
+			RootCAs: caCertPool,
+		})
+	} else {
+		socket, err = thrift.NewTSocket(addr)
+	}
 
 	if err != nil {
 		return nil, err

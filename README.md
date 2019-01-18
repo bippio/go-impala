@@ -24,6 +24,10 @@ func main() {
     opts.Username = "<username>"
     opts.Password = "<password>"
 
+    // enable TLS
+    opts.UseTLS = true
+    opts.CACertPath = "<ca-cert-path>"
+
     con, err := impalathing.Connect(host, port, &opts)
     if err != nil {
         log.Fatal(err)

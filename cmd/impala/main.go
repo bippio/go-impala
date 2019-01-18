@@ -22,6 +22,8 @@ func main() {
 	flag.BoolVar(&opts.UseLDAP, "l", false, "use ldap authentication")
 	flag.StringVar(&opts.Username, "username", "", "ldap usename")
 	flag.StringVar(&opts.Password, "password", "", "ldap password")
+	flag.BoolVar(&opts.UseTLS, "tls", false, "use tls")
+	flag.StringVar(&opts.CACertPath, "ca-cert", "", "ca certificate path")
 
 	flag.Parse()
 
@@ -31,6 +33,12 @@ func main() {
 		}
 		if opts.Password == "" {
 			log.Fatalf("Please specify password with --password flag")
+		}
+	}
+
+	if opts.UseTLS {
+		if opts.CACertPath == "" {
+			log.Fatalf("Please specify ca certificate path with --ca-cert flag")
 		}
 	}
 
