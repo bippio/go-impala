@@ -147,6 +147,7 @@ func (r *rowSet) Next(ctx context.Context) bool {
 			r.metadata, err = r.client.GetResultsMetadata(ctx, r.handle)
 			if err != nil {
 				log.Printf("GetResultsMetadata failed: %v\n", err)
+				return false
 			}
 
 			if len(r.columns) == 0 {
