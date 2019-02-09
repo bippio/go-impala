@@ -1,4 +1,4 @@
-go-impala is a Go driver for Cloudera Impala
+go-impala is a Go driver for Apache Impala
 
 It's based on [impalathing](https://github.com/koblas/impalathing)
 
