@@ -41,7 +41,7 @@ type rowSet struct {
 // from the prior operation.
 type RowSet interface {
 	Schema(ctx context.Context) []*ColumnSchema
-	Next(ctx context.Context) bool
+	Next(ctx context.Context) (bool, error)
 	Scan(dest ...interface{}) error
 	Poll(ctx context.Context) (*Status, error)
 	Wait(ctx context.Context) (*Status, error)
@@ -127,27 +127,27 @@ func (r *rowSet) waitForSuccess(ctx context.Context) error {
 // complete, if necessary.
 // Returns true is a row is available to Scan(), and false if the
 // results are empty or any other error occurs.
-func (r *rowSet) Next(ctx context.Context) bool {
+func (r *rowSet) Next(ctx context.Context) (bool, error) {
 	if err := r.waitForSuccess(ctx); err != nil {
-		return false
+		return false, err
 	}
 
 	if r.rowSet == nil || r.offset >= len(r.rowSet.Data) {
 		if !r.hasMore {
-			return false
+			return false, nil
 		}
 
-		resp, err := r.client.Fetch(ctx, r.handle, false, 1000000)
+		resp, err := r.client.Fetch(ctx, r.handle, false, 100)
 		if err != nil {
 			log.Printf("FetchResults failed: %v\n", err)
-			return false
+			return false, err
 		}
 
 		if r.metadata == nil {
 			r.metadata, err = r.client.GetResultsMetadata(ctx, r.handle)
 			if err != nil {
 				log.Printf("GetResultsMetadata failed: %v\n", err)
-				return false
+				return false, err
 			}
 
 			if len(r.columns) == 0 {
@@ -164,14 +164,14 @@ func (r *rowSet) Next(ctx context.Context) bool {
 
 		// We assume that if we get 0 results back, that's the end
 		if len(resp.Data) == 0 {
-			return false
+			return false, nil
 		}
 	}
 
 	r.nextRow = strings.Split(r.rowSet.Data[r.offset], "\t")
 	r.offset++
 
-	return true
+	return true, nil
 }
 
 // Scan the last row prepared via Next() into the destination(s) provided,
@@ -255,7 +255,8 @@ func (r *rowSet) convertRawValue(raw string, hiveType string) (interface{}, erro
 //appropriate type conversion already carried out
 func (r *rowSet) FetchAll(ctx context.Context) []map[string]interface{} {
 	response := make([]map[string]interface{}, 0)
-	for r.Next(ctx) {
+	hasMore, _ := r.Next(ctx)
+	for hasMore {
 		row := make(map[string]interface{})
 		for i, val := range r.nextRow {
 			conv, err := r.convertRawValue(val, r.metadata.Schema.FieldSchemas[i].Type)
