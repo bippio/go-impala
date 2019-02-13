@@ -44,10 +44,7 @@ func main() {
 
 	ctx := context.Background()
 
-	var (
-		hasMore bool
-		rows    impala.RowSet
-	)
+	var rows impala.RowSet
 
 	// get all databases for the connection object
 	query := fmt.Sprintf("SHOW DATABASES")
@@ -58,15 +55,6 @@ func main() {
 
 	databases := make([]string, 0) // databases will contain all the DBs to enumerate later
 	for {
-		hasMore, err = rows.Next(ctx)
-		if err != nil {
-			log.Println("error iterating database names: ", err)
-			continue
-		}
-		if !hasMore {
-			break
-		}
-
 		row := make(map[string]interface{})
 		err = rows.MapScan(row)
 		if err != nil {
@@ -89,16 +77,7 @@ func main() {
 		}
 
 		tables := make([]string, 0) // databases will contain all the DBs to enumerate later
-		for {
-			hasMore, err = rows.Next(ctx)
-			if err != nil {
-				log.Println("error iterating table names: ", err)
-				continue
-			}
-			if !hasMore {
-				break
-			}
-
+		for rows.Next(ctx) {
 			row := make(map[string]interface{})
 			err = rows.MapScan(row)
 			if err != nil {
