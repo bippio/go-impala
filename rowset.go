@@ -129,6 +129,7 @@ func (r *rowSet) waitForSuccess(ctx context.Context) error {
 // results are empty or any other error occurs.
 func (r *rowSet) Next(ctx context.Context) bool {
 	if err := r.waitForSuccess(ctx); err != nil {
+		log.Printf("wait for success failed: %v\n", err)
 		return false
 	}
 
@@ -137,7 +138,7 @@ func (r *rowSet) Next(ctx context.Context) bool {
 			return false
 		}
 
-		resp, err := r.client.Fetch(ctx, r.handle, false, 1000000)
+		resp, err := r.client.Fetch(ctx, r.handle, false, int32(r.options.BatchSize))
 		if err != nil {
 			log.Printf("FetchResults failed: %v\n", err)
 			return false

@@ -113,8 +113,9 @@ func (t *TSaslTransport) readFrame(buf []byte) (int, error) {
 	}
 
 	l := binary.BigEndian.Uint32(header)
+
 	body := make([]byte, l)
-	_, err = t.trans.Read(body)
+	_, err = io.ReadFull(t.trans, body)
 	if err != nil {
 		return 0, err
 	}
