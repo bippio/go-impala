@@ -21,12 +21,12 @@ type Options struct {
 	Username            string
 	Password            string
 	PollIntervalSeconds float64
-	BatchSize           int64
+	BatchSize           int
 	BufferSize          int
 }
 
 var (
-	DefaultOptions = Options{PollIntervalSeconds: 0.1, BatchSize: 10000, BufferSize: 4096}
+	DefaultOptions = Options{PollIntervalSeconds: 0.1, BatchSize: 1024, BufferSize: 4096}
 )
 
 type Connection struct {

@@ -24,6 +24,7 @@ func main() {
 	flag.StringVar(&opts.Password, "password", "", "ldap password")
 	flag.BoolVar(&opts.UseTLS, "tls", false, "use tls")
 	flag.StringVar(&opts.CACertPath, "ca-cert", "", "ca certificate path")
+	flag.IntVar(&opts.BatchSize, "batch-size", 1024, "fetch batch size")
 
 	flag.Parse()
 
