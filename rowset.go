@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -33,6 +32,7 @@ type rowSet struct {
 	metadata *beeswax.ResultsMetadata
 
 	nextRow []string
+	lasterr error
 }
 
 // A RowSet represents an asyncronous hive operation. You can
@@ -42,6 +42,7 @@ type rowSet struct {
 type RowSet interface {
 	Schema(ctx context.Context) []*ColumnSchema
 	Next(ctx context.Context) bool
+	Err() error
 	Scan(dest ...interface{}) error
 	Poll(ctx context.Context) (*Status, error)
 	Wait(ctx context.Context) (*Status, error)
@@ -128,27 +129,36 @@ func (r *rowSet) waitForSuccess(ctx context.Context) error {
 // Returns true is a row is available to Scan(), and false if the
 // results are empty or any other error occurs.
 func (r *rowSet) Next(ctx context.Context) bool {
-	if err := r.waitForSuccess(ctx); err != nil {
-		log.Printf("wait for success failed: %v\n", err)
-		return false
+	doClose, ok := r.next(ctx)
+	if doClose {
+		r.Close(ctx)
+	}
+	return ok
+}
+
+func (r *rowSet) next(ctx context.Context) (doClose, ok bool) {
+	r.lasterr = r.waitForSuccess(ctx)
+	if r.lasterr != nil {
+		return true, false
 	}
 
 	if r.rowSet == nil || r.offset >= len(r.rowSet.Data) {
 		if !r.hasMore {
-			return false
+			return true, false
 		}
 
 		resp, err := r.client.Fetch(ctx, r.handle, false, int32(r.options.BatchSize))
 		if err != nil {
-			log.Printf("FetchResults failed: %v\n", err)
-			return false
+			r.lasterr = err
+			return true, false
+
 		}
 
 		if r.metadata == nil {
 			r.metadata, err = r.client.GetResultsMetadata(ctx, r.handle)
 			if err != nil {
-				log.Printf("GetResultsMetadata failed: %v\n", err)
-				return false
+				r.lasterr = err
+				return true, false
 			}
 
 			if len(r.columns) == 0 {
@@ -165,14 +175,27 @@ func (r *rowSet) Next(ctx context.Context) bool {
 
 		// We assume that if we get 0 results back, that's the end
 		if len(resp.Data) == 0 {
-			return false
+			return true, false
 		}
 	}
 
 	r.nextRow = strings.Split(r.rowSet.Data[r.offset], "\t")
 	r.offset++
 
-	return true
+	return false, true
+}
+
+func (r *rowSet) Close(ctx context.Context) error {
+	err := r.client.Close(ctx, r.handle)
+	if r.lasterr == nil {
+		r.lasterr = err
+	}
+	return err
+}
+
+// Err returns the error, if any, that was encoutered during iteration.
+func (r *rowSet) Err() error {
+	return r.lasterr
 }
 
 // Scan the last row prepared via Next() into the destination(s) provided,
@@ -266,6 +289,9 @@ func (r *rowSet) FetchAll(ctx context.Context) []map[string]interface{} {
 			row[r.metadata.Schema.FieldSchemas[i].Name] = conv
 		}
 		response = append(response, row)
+	}
+	if err := r.Err(); err != nil {
+		fmt.Printf("%v\n", err)
 	}
 	return response
 }
