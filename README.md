@@ -16,17 +16,18 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"database/sql"
 	"log"
 
 	impala "github.com/bippio/go-impala"
 )
 
 func main() {
-	host := "<impala host>"
-	port := 21000
 
 	opts := impala.DefaultOptions
+
+	opts.Host = "<impala host>"
+	opts.Port = "21050"
 
 	// enable LDAP authentication:
 	opts.UseLDAP = true
@@ -37,56 +38,57 @@ func main() {
 	opts.UseTLS = true
 	opts.CACertPath = "/path/to/cacert"
 
-	con, err := impala.Connect(host, port, &opts)
+	connector := impala.NewConnector(&opts)
+	db := sql.OpenDB(connector)
+	defer db.Close()
+
+	ctx := context.Background()
+
+	rows, err := db.QueryContext(ctx, "SHOW DATABASES")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	ctx := context.Background()
-
-	var rows impala.RowSet
-
-	// get all databases for the connection object
-	query := fmt.Sprintf("SHOW DATABASES")
-	rows, err = con.Query(ctx, query)
-	if err != nil {
-		log.Fatal("error in retriving databases: ", err)
-	}
+	r := struct {
+		name    string
+		comment string
+	}{}
 
 	databases := make([]string, 0) // databases will contain all the DBs to enumerate later
-	for {
-		row := make(map[string]interface{})
-		err = rows.MapScan(row)
-		if err != nil {
-			log.Println(err)
-			continue
+	for rows.Next() {
+		if err := rows.Scan(&r.name, &r.comment); err != nil {
+			log.Fatal(err)
 		}
-		if db, ok := row["name"].(string); ok {
-			databases = append(databases, db)
-		}
+		databases = append(databases, r.name)
+	}
+	if err := rows.Err(); err != nil {
+		log.Fatal(err)
 	}
 	log.Println("List of Databases", databases)
 
-	for _, d := range databases {
-		q := "SHOW TABLES IN " + d
+	stmt, err := db.PrepareContext(ctx, "SHOW TABLES IN ?")
+	if err != nil {
+		log.Fatal(err)
+	}
 
-		rows, err = con.Query(ctx, q)
+	tbl := struct {
+		name string
+	}{}
+
+	for _, d := range databases {
+		rows, err := stmt.QueryContext(ctx, d)
 		if err != nil {
 			log.Printf("error in querying database %s: %s", d, err.Error())
 			continue
 		}
 
-		tables := make([]string, 0) // databases will contain all the DBs to enumerate later
-		for rows.Next(ctx) {
-			row := make(map[string]interface{})
-			err = rows.MapScan(row)
-			if err != nil {
+		tables := make([]string, 0)
+		for rows.Next() {
+			if err := rows.Scan(&tbl.name); err != nil {
 				log.Println(err)
 				continue
 			}
-			if tab, ok := row["name"].(string); ok {
-				tables = append(tables, tab)
-			}
+			tables = append(tables, tbl.name)
 		}
 		log.Printf("List of Tables in Database %s: %v\n", d, tables)
 	}

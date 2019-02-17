@@ -32,16 +32,31 @@
 // * Service names begin with the letter "T", use a capital letter for each
 //   new word (with no underscores), and end with the word "Service".
 
-// This file contains the HiveServer2 definition and is copied from
-// Hive 0.10.0 - src/service/if/TCLIService.thrift.
-
 namespace java org.apache.hive.service.cli.thrift
 namespace cpp apache.hive.service.cli.thrift
 
 // List of protocol versions. A new token should be
 // added to the end of this list every time a change is made.
 enum TProtocolVersion {
-  HIVE_CLI_SERVICE_PROTOCOL_V1
+  HIVE_CLI_SERVICE_PROTOCOL_V1,
+
+  // V2 adds support for asynchronous execution
+  HIVE_CLI_SERVICE_PROTOCOL_V2
+
+  // V3 add varchar type, primitive type qualifiers
+  HIVE_CLI_SERVICE_PROTOCOL_V3
+
+  // V4 add decimal precision/scale, char type
+  HIVE_CLI_SERVICE_PROTOCOL_V4
+
+  // V5 adds error details when GetOperationStatus returns in error state
+  HIVE_CLI_SERVICE_PROTOCOL_V5
+
+  // V6 uses binary type for binary payload (was string) and uses columnar result set
+  HIVE_CLI_SERVICE_PROTOCOL_V6
+
+  // V7 adds support for delegation token based connection
+  HIVE_CLI_SERVICE_PROTOCOL_V7
 }
 
 enum TTypeId {
@@ -59,20 +74,30 @@ enum TTypeId {
   MAP_TYPE,
   STRUCT_TYPE,
   UNION_TYPE,
-  USER_DEFINED_TYPE
+  USER_DEFINED_TYPE,
+  DECIMAL_TYPE,
+  NULL_TYPE,
+  DATE_TYPE,
+  VARCHAR_TYPE,
+  CHAR_TYPE
 }
-  
+
 const set<TTypeId> PRIMITIVE_TYPES = [
-  TTypeId.BOOLEAN_TYPE
-  TTypeId.TINYINT_TYPE
-  TTypeId.SMALLINT_TYPE
-  TTypeId.INT_TYPE
-  TTypeId.BIGINT_TYPE
-  TTypeId.FLOAT_TYPE
-  TTypeId.DOUBLE_TYPE
-  TTypeId.STRING_TYPE
-  TTypeId.TIMESTAMP_TYPE
-  TTypeId.BINARY_TYPE
+  TTypeId.BOOLEAN_TYPE,
+  TTypeId.TINYINT_TYPE,
+  TTypeId.SMALLINT_TYPE,
+  TTypeId.INT_TYPE,
+  TTypeId.BIGINT_TYPE,
+  TTypeId.FLOAT_TYPE,
+  TTypeId.DOUBLE_TYPE,
+  TTypeId.STRING_TYPE,
+  TTypeId.TIMESTAMP_TYPE,
+  TTypeId.BINARY_TYPE,
+  TTypeId.DECIMAL_TYPE,
+  TTypeId.NULL_TYPE,
+  TTypeId.DATE_TYPE,
+  TTypeId.VARCHAR_TYPE,
+  TTypeId.CHAR_TYPE
 ]
 
 const set<TTypeId> COMPLEX_TYPES = [
@@ -102,7 +127,12 @@ const map<TTypeId,string> TYPE_NAMES = {
   TTypeId.ARRAY_TYPE: "ARRAY",
   TTypeId.MAP_TYPE: "MAP",
   TTypeId.STRUCT_TYPE: "STRUCT",
-  TTypeId.UNION_TYPE: "UNIONTYPE"
+  TTypeId.UNION_TYPE: "UNIONTYPE",
+  TTypeId.DECIMAL_TYPE: "DECIMAL",
+  TTypeId.NULL_TYPE: "NULL"
+  TTypeId.DATE_TYPE: "DATE"
+  TTypeId.VARCHAR_TYPE: "VARCHAR"
+  TTypeId.CHAR_TYPE: "CHAR"
 }
 
 // Thrift does not support recursively defined types or forward declarations,
@@ -150,11 +180,29 @@ const map<TTypeId,string> TYPE_NAMES = {
 
 typedef i32 TTypeEntryPtr
 
+// Valid TTypeQualifiers key names
+const string CHARACTER_MAXIMUM_LENGTH = "characterMaximumLength"
+
+// Type qualifier key name for decimal
+const string PRECISION = "precision"
+const string SCALE = "scale"
+
+union TTypeQualifierValue {
+  1: optional i32 i32Value
+  2: optional string stringValue
+}
+
+// Type qualifiers for primitive type.
+struct TTypeQualifiers {
+  1: required map <string, TTypeQualifierValue> qualifiers
+}
+
 // Type entry for a primitive type.
 struct TPrimitiveTypeEntry {
   // The primitive type token. This must satisfy the condition
   // that type is in the PRIMITIVE_TYPES set.
   1: required TTypeId type
+  2: optional TTypeQualifiers typeQualifiers
 }
 
 // Type entry for an ARRAY type.
@@ -208,7 +256,7 @@ struct TColumnDesc {
 
   // The type descriptor for this column
   2: required TTypeDesc typeDesc
-  
+
   // The ordinal position of this column in the schema
   3: required i32 position
 
@@ -262,16 +310,6 @@ struct TStringValue {
   1: optional string value
 }
 
-union TColumn {
-  1: list<TBoolValue> boolColumn
-  2: list<TByteValue> byteColumn
-  3: list<TI16Value> i16Column
-  4: list<TI32Value> i32Column
-  5: list<TI64Value> i64Column
-  6: list<TDoubleValue> doubleColumn
-  7: list<TStringValue> stringColumn
-}
-
 // A single column value in a result set.
 // Note that Hive's type system is richer than Thrift's,
 // so in some cases we have to map multiple Hive types
@@ -285,12 +323,68 @@ union TColumnValue {
   4: TI32Value    i32Val       // INT
   5: TI64Value    i64Val       // BIGINT, TIMESTAMP
   6: TDoubleValue doubleVal    // FLOAT, DOUBLE
-  7: TStringValue stringVal    // STRING, LIST, MAP, STRUCT, UNIONTYPE, BINARY
+  7: TStringValue stringVal    // STRING, LIST, MAP, STRUCT, UNIONTYPE, BINARY, DECIMAL, NULL
 }
 
 // Represents a row in a rowset.
 struct TRow {
   1: required list<TColumnValue> colVals
+}
+
+struct TBoolColumn {
+  1: required list<bool> values
+  2: required binary nulls
+}
+
+struct TByteColumn {
+  1: required list<byte> values
+  2: required binary nulls
+}
+
+struct TI16Column {
+  1: required list<i16> values
+  2: required binary nulls
+}
+
+struct TI32Column {
+  1: required list<i32> values
+  2: required binary nulls
+}
+
+struct TI64Column {
+  1: required list<i64> values
+  2: required binary nulls
+}
+
+struct TDoubleColumn {
+  1: required list<double> values
+  2: required binary nulls
+}
+
+struct TStringColumn {
+  1: required list<string> values
+  2: required binary nulls
+}
+
+struct TBinaryColumn {
+  1: required list<binary> values
+  2: required binary nulls
+}
+
+// Note that Hive's type system is richer than Thrift's,
+// so in some cases we have to map multiple Hive types
+// to the same Thrift type. On the client-side this is
+// disambiguated by looking at the Schema of the
+// result set.
+union TColumn {
+  1: TBoolColumn   boolVal      // BOOLEAN
+  2: TByteColumn   byteVal      // TINYINT
+  3: TI16Column    i16Val       // SMALLINT
+  4: TI32Column    i32Val       // INT
+  5: TI64Column    i64Val       // BIGINT, TIMESTAMP
+  6: TDoubleColumn doubleVal    // FLOAT, DOUBLE
+  7: TStringColumn stringVal    // STRING, LIST, MAP, STRUCT, UNIONTYPE, DECIMAL, NULL
+  8: TBinaryColumn binaryVal    // BINARY
 }
 
 // Represents a rowset
@@ -350,8 +444,10 @@ enum TOperationState {
 
   // The operation is in an unrecognized state
   UKNOWN_STATE,
-}
 
+  // The operation is in an pending state
+  PENDING_STATE,
+}
 
 // A string identifier. This is interpreted literally.
 typedef string TIdentifier
@@ -443,11 +539,11 @@ struct TOperationHandle {
 // OpenSession()
 //
 // Open a session (connection) on the server against
-// which operations may be executed. 
+// which operations may be executed.
 struct TOpenSessionReq {
   // The version of the HiveServer2 protocol that the client is using.
-  1: required TProtocolVersion client_protocol = TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V1
-  
+  1: required TProtocolVersion client_protocol = TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V6
+
   // Username and password for authentication.
   // Depending on the authentication scheme being used,
   // this information may instead be provided by a lower
@@ -465,7 +561,7 @@ struct TOpenSessionResp {
   1: required TStatus status
 
   // The protocol version that the server is using.
-  2: required TProtocolVersion serverProtocolVersion = TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V1
+  2: required TProtocolVersion serverProtocolVersion = TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V6
 
   // Session Handle
   3: optional TSessionHandle sessionHandle
@@ -576,7 +672,7 @@ struct TGetInfoResp {
 // status of the statement, and to fetch results once the
 // statement has finished executing.
 struct TExecuteStatementReq {
-  // The session to exexcute the statement against
+  // The session to execute the statement against
   1: required TSessionHandle sessionHandle
 
   // The statement to be executed (DML, DDL, SET, etc)
@@ -587,13 +683,15 @@ struct TExecuteStatementReq {
   // is executed. These properties apply to this statement
   // only and will not affect the subsequent state of the Session.
   3: optional map<string, string> confOverlay
+
+  // Execute asynchronously when runAsync is true
+  4: optional bool runAsync = false
 }
 
 struct TExecuteStatementResp {
   1: required TStatus status
   2: optional TOperationHandle operationHandle
 }
-
 
 // GetTypeInfo()
 //
@@ -611,13 +709,13 @@ struct TGetTypeInfoReq {
 struct TGetTypeInfoResp {
   1: required TStatus status
   2: optional TOperationHandle operationHandle
-}  
+}
 
 
 // GetCatalogs()
 //
-// Returns the list of catalogs (databases) 
-// Results are ordered by TABLE_CATALOG 
+// Returns the list of catalogs (databases)
+// Results are ordered by TABLE_CATALOG
 //
 // Resultset columns :
 // col1
@@ -638,7 +736,7 @@ struct TGetCatalogsResp {
 
 // GetSchemas()
 //
-// Retrieves the schema names available in this database. 
+// Retrieves the schema names available in this database.
 // The results are ordered by TABLE_CATALOG and TABLE_SCHEM.
 // col1
 // name: TABLE_SCHEM
@@ -727,9 +825,9 @@ struct TGetTablesResp {
 
 // GetTableTypes()
 //
-// Returns the table types available in this database. 
-// The results are ordered by table type. 
-// 
+// Returns the table types available in this database.
+// The results are ordered by table type.
+//
 // col1
 // name: TABLE_TYPE
 // type: STRING
@@ -750,8 +848,8 @@ struct TGetTableTypesResp {
 // Returns a list of columns in the specified tables.
 // The information is returned as a result set which can be fetched
 // using the OperationHandle provided in the response.
-// Results are ordered by TABLE_CAT, TABLE_SCHEM, TABLE_NAME, 
-// and ORDINAL_POSITION. 
+// Results are ordered by TABLE_CAT, TABLE_SCHEM, TABLE_NAME,
+// and ORDINAL_POSITION.
 //
 // Result Set Columns are the same as those for the ODBC CLIColumns
 // function.
@@ -847,7 +945,7 @@ struct TGetFunctionsResp {
   1: required TStatus status
   2: optional TOperationHandle operationHandle
 }
-  
+
 
 // GetOperationStatus()
 //
@@ -860,6 +958,16 @@ struct TGetOperationStatusReq {
 struct TGetOperationStatusResp {
   1: required TStatus status
   2: optional TOperationState operationState
+
+  // If operationState is ERROR_STATE, then the following fields may be set
+  // sqlState as defined in the ISO/IEF CLI specification
+  3: optional string sqlState
+
+  // Internal error code
+  4: optional i32 errorCode
+
+  // Error message
+  5: optional string errorMessage
 }
 
 
@@ -942,7 +1050,7 @@ struct TFetchResultsReq {
   // The fetch orientation. For V1 this must be either
   // FETCH_NEXT or FETCH_FIRST. Defaults to FETCH_NEXT.
   2: required TFetchOrientation orientation = TFetchOrientation.FETCH_NEXT
-  
+
   // Max number of rows that should be returned in
   // the rowset.
   3: required i64 maxRows
@@ -959,6 +1067,72 @@ struct TFetchResultsResp {
   // representing result set data, e.g. delimited strings,
   // binary encoded, etc.
   3: optional TRowSet results
+}
+
+// GetDelegationToken()
+// Retrieve delegation token for the current user
+struct  TGetDelegationTokenReq {
+  // session handle
+  1: required TSessionHandle sessionHandle
+
+  // userid for the proxy user
+  2: required string owner
+
+  // designated renewer userid
+  3: required string renewer
+}
+
+struct TGetDelegationTokenResp {
+  // status of the request
+  1: required TStatus status
+
+  // delegation token string
+  2: optional string delegationToken
+}
+
+// CancelDelegationToken()
+// Cancel the given delegation token
+struct TCancelDelegationTokenReq {
+  // session handle
+  1: required TSessionHandle sessionHandle
+
+  // delegation token to cancel
+  2: required string delegationToken
+}
+
+struct TCancelDelegationTokenResp {
+  // status of the request
+  1: required TStatus status
+}
+
+// RenewDelegationToken()
+// Renew the given delegation token
+struct TRenewDelegationTokenReq {
+  // session handle
+  1: required TSessionHandle sessionHandle
+
+  // delegation token to renew
+  2: required string delegationToken
+}
+
+struct TRenewDelegationTokenResp {
+  // status of the request
+  1: required TStatus status
+}
+
+// GetLog()
+// Not present in Hive 0.13, re-added for backwards compatibility.
+//
+// Fetch operation log from the server corresponding to
+// a particular OperationHandle.
+struct TGetLogReq {
+  // Operation whose log is requested
+  1: required TOperationHandle operationHandle
+}
+
+struct TGetLogResp {
+  1: required TStatus status
+  2: required string log
 }
 
 service TCLIService {
@@ -986,12 +1160,21 @@ service TCLIService {
   TGetFunctionsResp GetFunctions(1:TGetFunctionsReq req);
 
   TGetOperationStatusResp GetOperationStatus(1:TGetOperationStatusReq req);
-  
+
   TCancelOperationResp CancelOperation(1:TCancelOperationReq req);
 
   TCloseOperationResp CloseOperation(1:TCloseOperationReq req);
 
   TGetResultSetMetadataResp GetResultSetMetadata(1:TGetResultSetMetadataReq req);
-  
+
   TFetchResultsResp FetchResults(1:TFetchResultsReq req);
+
+  TGetDelegationTokenResp GetDelegationToken(1:TGetDelegationTokenReq req);
+
+  TCancelDelegationTokenResp CancelDelegationToken(1:TCancelDelegationTokenReq req);
+
+  TRenewDelegationTokenResp RenewDelegationToken(1:TRenewDelegationTokenReq req);
+
+  // Not present in Hive 0.13, re-added for backwards compatibility.
+  TGetLogResp GetLog(1:TGetLogReq req);
 }
