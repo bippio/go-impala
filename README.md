@@ -8,7 +8,46 @@ As part of that, we are commited to making this is a production grade driver tha
 
 Issues and contributions are welcome. 
 
-## Using
+## Connection Parameters and DSN
+The connection string uses a URL format: impala://username:password@host:port?param1=value&param2=value
+
+### Parameters:
+* `auth` - string. Authentication mode. Supported values: "noauth", "ldap"
+* `tls` - boolean. Enable TLS
+* `ca-cert` - The file that contains the public key certificate of the CA that signed the impala certificate
+* `batch-size` - integer value (default: 1024). Maximum number of rows fetched per request
+* `buffer-size`- in bytes (default: 4096); Buffer size for the Thrift transport 
+
+A string of this format can be constructed using the URL type in the net/url package.
+
+```go
+  query := url.Values{}
+  query.Add("auth", "ldap")
+
+  u := &url.URL{
+      Scheme:   "impala",
+      User:     url.UserPassword(username, password),
+      Host:     net.JoinHostPort(hostname, port),
+      RawQuery: query.Encode(),
+  }
+  db, err := sql.Open("impala", u.String())
+```
+
+Also, you can bypass string-base data source name by using sql.OpenDB:
+
+```go
+  opts := impala.DefaultOptions
+  opts.Host = hostname
+  opts.UseLDAP = true
+  opts.Username = username
+  opts.Password = password
+
+  connector := impala.NewConnector(&opts)
+  db := sql.OpenDB(connector)
+```
+
+
+## Example
 ```go
 package main
 
