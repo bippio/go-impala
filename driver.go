@@ -113,6 +113,11 @@ func parseURI(uri string) (*Options, error) {
 		opts.BufferSize = size
 	}
 
+	memLimit, ok := query["mem-limit"]
+	if ok {
+		opts.MemoryLimit = memLimit[0]
+	}
+
 	return &opts, nil
 }
 
@@ -209,7 +214,10 @@ func connect(opts *Options) (*Conn, error) {
 	logger := log.New(opts.LogOut, "impala: ", log.LstdFlags)
 
 	tclient := thrift.NewTStandardClient(protocol, protocol)
-	client := hive.NewClient(tclient, logger, &hive.Options{MaxRows: int64(opts.BatchSize)})
+	client := hive.NewClient(tclient, logger, &hive.Options{
+		MaxRows:  int64(opts.BatchSize),
+		MemLimit: opts.MemoryLimit,
+	})
 
 	return &Conn{client: client, t: transport, log: logger}, nil
 }
