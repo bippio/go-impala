@@ -1,139 +1,116 @@
-package impalathing
+package impala
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
-	"errors"
-	"fmt"
-	"io/ioutil"
+	"database/sql/driver"
+	"log"
+	"time"
 
 	"github.com/apache/thrift/lib/go/thrift"
-	"github.com/bippio/go-impala/sasl"
-	"github.com/bippio/go-impala/services/beeswax"
-	impala "github.com/bippio/go-impala/services/impalaservice"
+	"github.com/bippio/go-impala/hive"
 )
 
-type Options struct {
-	UseTLS              bool
-	CACertPath          string
-	UseLDAP             bool
-	Username            string
-	Password            string
-	PollIntervalSeconds float64
-	BatchSize           int
-	BufferSize          int
+// Conn to impala. It is not used concurrently by multiple goroutines.
+type Conn struct {
+	t       thrift.TTransport
+	session *hive.Session
+	client  *hive.Client
+	log     *log.Logger
 }
 
-var (
-	DefaultOptions = Options{PollIntervalSeconds: 0.1, BatchSize: 1024, BufferSize: 4096}
-)
-
-type Connection struct {
-	client    *impala.ImpalaServiceClient
-	handle    *beeswax.QueryHandle
-	transport thrift.TTransport
-	options   *Options
-}
-
-func Connect(host string, port int, options *Options) (*Connection, error) {
-
-	addr := fmt.Sprintf("%s:%d", host, port)
-
-	var socket thrift.TTransport
-	var err error
-	if options.UseTLS {
-
-		if options.CACertPath == "" {
-			return nil, errors.New("Please provide CA certificate path")
-		}
-
-		caCert, err := ioutil.ReadFile(options.CACertPath)
-		if err != nil {
-			return nil, err
-		}
-
-		caCertPool := x509.NewCertPool()
-		caCertPool.AppendCertsFromPEM(caCert)
-
-		socket, err = thrift.NewTSSLSocket(addr, &tls.Config{
-			RootCAs: caCertPool,
-		})
-	} else {
-		socket, err = thrift.NewTSocket(addr)
+// Ping impala server
+func (c *Conn) Ping(ctx context.Context) error {
+	session, err := c.OpenSession(ctx)
+	if err != nil {
+		return err
 	}
 
+	if err := session.Ping(ctx); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// CheckNamedValue is called before passing arguments to the driver
+// and is called in place of any ColumnConverter. CheckNamedValue must do type
+// validation and conversion as appropriate for the driver.
+func (c *Conn) CheckNamedValue(val *driver.NamedValue) error {
+	t, ok := val.Value.(time.Time)
+	if ok {
+		val.Value = t.Format(hive.TimestampFormat)
+		return nil
+	}
+	return driver.ErrSkip
+}
+
+// Prepare returns prepared statement
+func (c *Conn) Prepare(query string) (driver.Stmt, error) {
+	return c.PrepareContext(context.Background(), query)
+}
+
+// PrepareContext returns prepared statement
+func (c *Conn) PrepareContext(ctx context.Context, query string) (driver.Stmt, error) {
+	return &Stmt{
+		conn: c,
+		stmt: template(query),
+	}, nil
+}
+
+// QueryContext executes a query that may return rows
+func (c *Conn) QueryContext(ctx context.Context, q string, args []driver.NamedValue) (driver.Rows, error) {
+	session, err := c.OpenSession(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	var transport thrift.TTransport
-	if options.UseLDAP {
+	tmpl := template(q)
+	stmt := statement(tmpl, args)
+	return query(ctx, session, stmt)
+}
 
-		if options.Username == "" {
-			return nil, errors.New("Please provide username for LDAP auth")
-		}
-
-		if options.Password == "" {
-			return nil, errors.New("Please provide password for LDAP auth")
-		}
-
-		transport, err = sasl.NewTSaslTransport(socket, &sasl.Options{
-			Host:     host,
-			Username: options.Username,
-			Password: options.Password,
-		})
-
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		transport = thrift.NewTBufferedTransport(socket, options.BufferSize)
-	}
-
-	protocol := thrift.NewTBinaryProtocol(transport, false, true)
-
-	if err := transport.Open(); err != nil {
+// ExecContext executes a query that doesn't return rows
+func (c *Conn) ExecContext(ctx context.Context, q string, args []driver.NamedValue) (driver.Result, error) {
+	session, err := c.OpenSession(ctx)
+	if err != nil {
 		return nil, err
 	}
 
-	tclient := thrift.NewTStandardClient(protocol, protocol)
-	client := impala.NewImpalaServiceClient(tclient)
-
-	return &Connection{client, nil, transport, options}, nil
+	tmpl := template(q)
+	stmt := statement(tmpl, args)
+	return exec(ctx, session, stmt)
 }
 
-func (c *Connection) isOpen() bool {
-	return c.client != nil
+// Begin is not supported
+func (c *Conn) Begin() (driver.Tx, error) {
+	return nil, ErrNotSupported
 }
 
-func (c *Connection) Close(ctx context.Context) error {
-	if c.isOpen() {
-		if c.handle != nil {
-			_, err := c.client.Cancel(ctx, c.handle)
-			if err != nil {
-				return err
-			}
-			c.handle = nil
+// OpenSession ensure opened session
+func (c *Conn) OpenSession(ctx context.Context) (*hive.Session, error) {
+	if c.session == nil {
+		session, err := c.client.OpenSession(ctx)
+		if err != nil {
+			return nil, err
 		}
+		c.session = session
+	}
+	return c.session, nil
+}
 
-		c.transport.Close()
-		c.client = nil
+// ResetSession closes hive session
+func (c *Conn) ResetSession(ctx context.Context) error {
+	if c.session != nil {
+		if err := c.session.Close(ctx); err != nil {
+			return err
+		}
+		c.session = nil
 	}
 	return nil
 }
 
-func (c *Connection) Query(ctx context.Context, query string) (RowSet, error) {
-	bquery := beeswax.Query{}
-
-	bquery.Query = query
-	bquery.Configuration = []string{}
-
-	handle, err := c.client.Query(ctx, &bquery)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return newRowSet(c.client, handle, c.options), nil
+// Close connection
+func (c *Conn) Close() error {
+	c.log.Printf("close connection")
+	return c.t.Close()
 }
