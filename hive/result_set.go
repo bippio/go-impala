@@ -2,7 +2,6 @@ package hive
 
 import (
 	"database/sql/driver"
-	"fmt"
 	"io"
 	"time"
 
@@ -90,7 +89,7 @@ func value(col *cli_service.TColumn, cd *ColDesc, i int) (interface{}, error) {
 			return nil, nil
 		}
 		return col.DoubleVal.Values[i], nil
-	case "TIMESTAMP":
+	case "TIMESTAMP", "DATETIME":
 		if col.StringVal.Nulls[i/8]&(1<<(uint(i)%8)) != 0 {
 			return nil, nil
 		}
@@ -99,8 +98,12 @@ func value(col *cli_service.TColumn, cd *ColDesc, i int) (interface{}, error) {
 			return nil, err
 		}
 		return t, nil
+	default:
+		if col.StringVal.Nulls[i/8]&(1<<(uint(i)%8)) != 0 {
+			return nil, nil
+		}
+		return col.StringVal.Values[i], nil
 	}
-	panic(fmt.Sprintf("unsupported column type: %s", cd.DatabaseTypeName))
 }
 
 func length(rs *cli_service.TRowSet) int {
