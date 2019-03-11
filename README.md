@@ -33,6 +33,7 @@ The connection string uses a URL format: impala://username:password@host:port?pa
 * `ca-cert` - The file that contains the public key certificate of the CA that signed the impala certificate
 * `batch-size` - integer value (default: 1024). Maximum number of rows fetched per request
 * `buffer-size`- in bytes (default: 4096); Buffer size for the Thrift transport 
+* `mem-limit` - string value (example: 3m); Memory limit for query 	
 
 A string of this format can be constructed using the URL type in the net/url package.
 

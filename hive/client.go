@@ -17,7 +17,8 @@ type Client struct {
 
 // Options for Hive Client
 type Options struct {
-	MaxRows int64
+	MaxRows  int64
+	MemLimit string
 }
 
 // NewClient creates Hive Client
@@ -31,8 +32,14 @@ func NewClient(client thrift.TClient, log *log.Logger, opts *Options) *Client {
 
 // OpenSession creates new hive session
 func (c *Client) OpenSession(ctx context.Context) (*Session, error) {
+
+	cfg := map[string]string{
+		"MEM_LIMIT": c.opts.MemLimit,
+	}
+
 	req := cli_service.TOpenSessionReq{
 		ClientProtocol: cli_service.TProtocolVersion_HIVE_CLI_SERVICE_PROTOCOL_V7,
+		Configuration:  cfg,
 	}
 
 	resp, err := c.client.OpenSession(ctx, &req)
@@ -44,5 +51,6 @@ func (c *Client) OpenSession(ctx context.Context) (*Session, error) {
 	}
 
 	c.log.Printf("open session: %s", guid(resp.SessionHandle.GetSessionId().GUID))
+	c.log.Printf("session config: %v", resp.Configuration)
 	return &Session{h: resp.SessionHandle, hive: c}, nil
 }
