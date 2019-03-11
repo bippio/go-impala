@@ -1,17 +1,27 @@
-go-impala is a Go driver for Apache Impala
+# Golang Apache Impala Driver 
+
+**Apache Impala driver for Go's [database/sql](https://golang.org/pkg/database/sql) package**
 
 As far as we know, this is the only pure golang driver for Apache Impala that has TLS and LDAP support.
 
-We at Bipp, want to make large scale data analytics accesible to every business user.
+We at [Bipp](http://www.bipp.io), want to make large scale data analytics accesible to every business user.
 
 As part of that, we are commited to making this is a production grade driver that be used in serious enterprise scenarios in lieu of the ODBC/JDBC drivers.
 
 Issues and contributions are welcome. 
 
+
+## Install
+
+go get github.com/bippio/go-impala
+
+
 ## Connection Parameters and DSN
+
 The connection string uses a URL format: impala://username:password@host:port?param1=value&param2=value
 
 ### Parameters:
+
 * `auth` - string. Authentication mode. Supported values: "noauth", "ldap"
 * `tls` - boolean. Enable TLS
 * `ca-cert` - The file that contains the public key certificate of the CA that signed the impala certificate
@@ -48,6 +58,7 @@ Also, you can bypass string-base data source name by using sql.OpenDB:
 
 
 ## Example
+
 ```go
 package main
 
@@ -134,4 +145,3 @@ func main() {
 }
 
 ```
-Initial fork from [impalathing](https://github.com/koblas/impalathing)
