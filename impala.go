@@ -17,12 +17,13 @@ type Options struct {
 	Username string
 	Password string
 
-	UseLDAP     bool
-	UseTLS      bool
-	CACertPath  string
-	BufferSize  int
-	BatchSize   int
-	MemoryLimit string
+	UseLDAP      bool
+	UseTLS       bool
+	CACertPath   string
+	BufferSize   int
+	BatchSize    int
+	MemoryLimit  string
+	QueryTimeout int
 
 	LogOut io.Writer
 }
