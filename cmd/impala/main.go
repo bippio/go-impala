@@ -32,6 +32,7 @@ func main() {
 	flag.StringVar(&opts.CACertPath, "ca-cert", "", "ca certificate path")
 	flag.IntVar(&opts.BatchSize, "batch-size", 1024, "fetch batch size")
 	flag.StringVar(&opts.MemoryLimit, "mem-limit", "0", "memory limit")
+	flag.IntVar(&opts.QueryTimeout, "query-timeout", 0, "query timeout (in seconds)")
 	flag.IntVar(&timeout, "timeout", 0, "timeout in ms; set 0 to disable timeout")
 	flag.BoolVar(&verbose, "v", false, "verbose")
 	flag.Parse()
@@ -55,11 +56,6 @@ func main() {
 		opts.LogOut = os.Stderr
 	}
 
-	connector := impala.NewConnector(&opts)
-
-	db := sql.OpenDB(connector)
-	defer db.Close()
-
 	appctx, cancel := context.WithCancel(context.Background())
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
@@ -71,8 +67,11 @@ func main() {
 		}
 	}()
 
-	if err := db.PingContext(appctx); err != nil {
-		log.Fatal(err)
+	if timeout != 0 {
+		ctx, release := context.WithTimeout(appctx, time.Duration(timeout*int(time.Millisecond)))
+		defer release()
+
+		appctx = ctx
 	}
 
 	var q string
@@ -100,28 +99,35 @@ func main() {
 		q = line
 	}
 
-	if timeout != 0 {
-		ctx, release := context.WithTimeout(appctx, time.Duration(timeout*int(time.Millisecond)))
-		defer release()
-
-		appctx = ctx
+	if err := query(appctx, &opts, q); err != nil {
+		log.Fatal(err)
 	}
-
-	query(appctx, db, q)
 	//exec(appctx, db, q)
 }
 
-func query(ctx context.Context, db *sql.DB, query string) {
+func query(ctx context.Context, opts *impala.Options, query string) error {
+	connector := impala.NewConnector(opts)
+
+	db := sql.OpenDB(connector)
+	
+	defer func () {
+		db.Close()
+	}()
+	
+	if err := db.PingContext(ctx); err != nil {
+		return err
+	}
+
 	startTime := time.Now()
 
 	rows, err := db.QueryContext(ctx, query)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	coltypes, err := rows.ColumnTypes()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	in := make([]reflect.Value, len(coltypes))
@@ -153,17 +159,19 @@ func query(ctx context.Context, db *sql.DB, query string) {
 		results++
 	}
 	if err := rows.Err(); err != nil {
-		log.Fatal(err)
+		return err
 	}
 	fmt.Printf("Fetch %d rows(s) in %.2fs\n", results, time.Duration(time.Since(startTime)).Seconds())
+	return nil
 }
 
-func exec(ctx context.Context, db *sql.DB, query string) {
+func exec(ctx context.Context, db *sql.DB, query string) error {
 	res, err := db.ExecContext(ctx, query)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	log.Print(res)
 	fmt.Print("The operation has no results.\n")
+	return nil
 }

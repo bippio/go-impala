@@ -118,6 +118,15 @@ func parseURI(uri string) (*Options, error) {
 		opts.MemoryLimit = memLimit[0]
 	}
 
+	queryTimeout, ok := query["query-timeout"]
+	if ok {
+		qTimeout, err := strconv.Atoi(queryTimeout[0])
+		if err != nil {
+			return nil, err
+		}
+		opts.QueryTimeout = qTimeout
+	}
+
 	return &opts, nil
 }
 
@@ -217,6 +226,7 @@ func connect(opts *Options) (*Conn, error) {
 	client := hive.NewClient(tclient, logger, &hive.Options{
 		MaxRows:  int64(opts.BatchSize),
 		MemLimit: opts.MemoryLimit,
+		QueryTimeout: opts.QueryTimeout,
 	})
 
 	return &Conn{client: client, t: transport, log: logger}, nil
