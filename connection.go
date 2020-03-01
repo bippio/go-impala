@@ -91,7 +91,8 @@ func (c *Conn) OpenSession(ctx context.Context) (*hive.Session, error) {
 	if c.session == nil {
 		session, err := c.client.OpenSession(ctx)
 		if err != nil {
-			return nil, err
+			c.log.Printf("failed to open session: %v", err)
+			return nil, driver.ErrBadConn
 		}
 		c.session = session
 	}
