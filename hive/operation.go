@@ -39,19 +39,22 @@ func (op *Operation) GetResultSetMetadata(ctx context.Context) (*TableSchema, er
 	}
 
 	schema := new(TableSchema)
-	for _, desc := range resp.Schema.Columns {
-		entry := desc.TypeDesc.Types[0].PrimitiveEntry
 
-		dbtype := strings.TrimSuffix(entry.Type.String(), "_TYPE")
-		schema.Columns = append(schema.Columns, &ColDesc{
-			Name:             desc.ColumnName,
-			DatabaseTypeName: dbtype,
-			ScanType:         typeOf(entry),
-		})
-	}
+	if resp.IsSetSchema() {
+		for _, desc := range resp.Schema.Columns {
+			entry := desc.TypeDesc.Types[0].PrimitiveEntry
 
-	for _, col := range schema.Columns {
-		op.hive.log.Printf("fetch schema: %v", col)
+			dbtype := strings.TrimSuffix(entry.Type.String(), "_TYPE")
+			schema.Columns = append(schema.Columns, &ColDesc{
+				Name:             desc.ColumnName,
+				DatabaseTypeName: dbtype,
+				ScanType:         typeOf(entry),
+			})
+		}
+
+		for _, col := range schema.Columns {
+			op.hive.log.Printf("fetch schema: %v", col)
+		}
 	}
 
 	return schema, nil
