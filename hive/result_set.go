@@ -107,6 +107,9 @@ func value(col *cli_service.TColumn, cd *ColDesc, i int) (interface{}, error) {
 }
 
 func length(rs *cli_service.TRowSet) int {
+	if rs == nil {
+		return 0
+	}
 	for _, col := range rs.Columns {
 		if col.BoolVal != nil {
 			return len(col.BoolVal.Values)
