@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql/driver"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -92,19 +93,17 @@ func template(query string) string {
 }
 
 func statement(tmpl string, args []driver.NamedValue) string {
-	var replacements []string
+	stmt := tmpl
 	for _, arg := range args {
-		var placeholder string
+		var re *regexp.Regexp
 		if arg.Name != "" {
-			placeholder = fmt.Sprintf("@%s", arg.Name)
+			re = regexp.MustCompile(fmt.Sprintf("@%s%s", arg.Name, `\b`))
 		} else {
-			placeholder = fmt.Sprintf("@p%d", arg.Ordinal)
+			re = regexp.MustCompile(fmt.Sprintf("@p%d%s", arg.Ordinal, `\b`))
 		}
 		val := fmt.Sprintf("%v", arg.Value)
-		replacements = append(replacements, placeholder, val)
+		stmt = re.ReplaceAllString(stmt, val)
 	}
-	r := strings.NewReplacer(replacements...)
-	stmt := r.Replace(tmpl)
 	return stmt
 }
 
