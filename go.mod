@@ -1,4 +1,4 @@
-module github.com/mangup/go-impala
+module github.com/bippio/go-impala
 
 go 1.17
 
