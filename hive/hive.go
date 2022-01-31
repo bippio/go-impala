@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/bippio/go-impala/services/cli_service"
+	"github.com/mangup/go-impala/services/cli_service"
 )
 
 const (

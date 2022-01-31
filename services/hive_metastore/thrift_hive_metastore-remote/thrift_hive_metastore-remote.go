@@ -4,1535 +4,1535 @@
 package main
 
 import (
-        "context"
-        "flag"
-        "fmt"
-        "math"
-        "net"
-        "net/url"
-        "os"
-        "strconv"
-        "strings"
-        "github.com/apache/thrift/lib/go/thrift"
-	"github.com/bippio/go-impala/services/fb303"
-        "github.com/bippio/go-impala/services/hive_metastore"
+	"context"
+	"flag"
+	"fmt"
+	"github.com/apache/thrift/lib/go/thrift"
+	"github.com/mangup/go-impala/services/fb303"
+	"github.com/mangup/go-impala/services/hive_metastore"
+	"math"
+	"net"
+	"net/url"
+	"os"
+	"strconv"
+	"strings"
 )
 
 var _ = fb303.GoUnusedProtection__
 
 func Usage() {
-  fmt.Fprintln(os.Stderr, "Usage of ", os.Args[0], " [-h host:port] [-u url] [-f[ramed]] function [arg1 [arg2...]]:")
-  flag.PrintDefaults()
-  fmt.Fprintln(os.Stderr, "\nFunctions:")
-  fmt.Fprintln(os.Stderr, "  void create_database(Database database)")
-  fmt.Fprintln(os.Stderr, "  Database get_database(string name)")
-  fmt.Fprintln(os.Stderr, "  void drop_database(string name, bool deleteData)")
-  fmt.Fprintln(os.Stderr, "   get_databases(string pattern)")
-  fmt.Fprintln(os.Stderr, "   get_all_databases()")
-  fmt.Fprintln(os.Stderr, "  void alter_database(string dbname, Database db)")
-  fmt.Fprintln(os.Stderr, "  Type get_type(string name)")
-  fmt.Fprintln(os.Stderr, "  bool create_type(Type type)")
-  fmt.Fprintln(os.Stderr, "  bool drop_type(string type)")
-  fmt.Fprintln(os.Stderr, "   get_type_all(string name)")
-  fmt.Fprintln(os.Stderr, "   get_fields(string db_name, string table_name)")
-  fmt.Fprintln(os.Stderr, "   get_schema(string db_name, string table_name)")
-  fmt.Fprintln(os.Stderr, "  void create_table(Table tbl)")
-  fmt.Fprintln(os.Stderr, "  void drop_table(string dbname, string name, bool deleteData)")
-  fmt.Fprintln(os.Stderr, "   get_tables(string db_name, string pattern)")
-  fmt.Fprintln(os.Stderr, "   get_all_tables(string db_name)")
-  fmt.Fprintln(os.Stderr, "  Table get_table(string dbname, string tbl_name)")
-  fmt.Fprintln(os.Stderr, "  void alter_table(string dbname, string tbl_name, Table new_tbl)")
-  fmt.Fprintln(os.Stderr, "  Partition add_partition(Partition new_part)")
-  fmt.Fprintln(os.Stderr, "  Partition append_partition(string db_name, string tbl_name,  part_vals)")
-  fmt.Fprintln(os.Stderr, "  Partition append_partition_by_name(string db_name, string tbl_name, string part_name)")
-  fmt.Fprintln(os.Stderr, "  bool drop_partition(string db_name, string tbl_name,  part_vals, bool deleteData)")
-  fmt.Fprintln(os.Stderr, "  bool drop_partition_by_name(string db_name, string tbl_name, string part_name, bool deleteData)")
-  fmt.Fprintln(os.Stderr, "  Partition get_partition(string db_name, string tbl_name,  part_vals)")
-  fmt.Fprintln(os.Stderr, "  Partition get_partition_with_auth(string db_name, string tbl_name,  part_vals, string user_name,  group_names)")
-  fmt.Fprintln(os.Stderr, "  Partition get_partition_by_name(string db_name, string tbl_name, string part_name)")
-  fmt.Fprintln(os.Stderr, "   get_partitions(string db_name, string tbl_name, i16 max_parts)")
-  fmt.Fprintln(os.Stderr, "   get_partitions_with_auth(string db_name, string tbl_name, i16 max_parts, string user_name,  group_names)")
-  fmt.Fprintln(os.Stderr, "   get_partition_names(string db_name, string tbl_name, i16 max_parts)")
-  fmt.Fprintln(os.Stderr, "   get_partitions_ps(string db_name, string tbl_name,  part_vals, i16 max_parts)")
-  fmt.Fprintln(os.Stderr, "   get_partitions_ps_with_auth(string db_name, string tbl_name,  part_vals, i16 max_parts, string user_name,  group_names)")
-  fmt.Fprintln(os.Stderr, "   get_partition_names_ps(string db_name, string tbl_name,  part_vals, i16 max_parts)")
-  fmt.Fprintln(os.Stderr, "   get_partitions_by_filter(string db_name, string tbl_name, string filter, i16 max_parts)")
-  fmt.Fprintln(os.Stderr, "  void alter_partition(string db_name, string tbl_name, Partition new_part)")
-  fmt.Fprintln(os.Stderr, "  string get_config_value(string name, string defaultValue)")
-  fmt.Fprintln(os.Stderr, "   partition_name_to_vals(string part_name)")
-  fmt.Fprintln(os.Stderr, "   partition_name_to_spec(string part_name)")
-  fmt.Fprintln(os.Stderr, "  Index add_index(Index new_index, Table index_table)")
-  fmt.Fprintln(os.Stderr, "  void alter_index(string dbname, string base_tbl_name, string idx_name, Index new_idx)")
-  fmt.Fprintln(os.Stderr, "  bool drop_index_by_name(string db_name, string tbl_name, string index_name, bool deleteData)")
-  fmt.Fprintln(os.Stderr, "  Index get_index_by_name(string db_name, string tbl_name, string index_name)")
-  fmt.Fprintln(os.Stderr, "   get_indexes(string db_name, string tbl_name, i16 max_indexes)")
-  fmt.Fprintln(os.Stderr, "   get_index_names(string db_name, string tbl_name, i16 max_indexes)")
-  fmt.Fprintln(os.Stderr, "  bool create_role(Role role)")
-  fmt.Fprintln(os.Stderr, "  bool drop_role(string role_name)")
-  fmt.Fprintln(os.Stderr, "   get_role_names()")
-  fmt.Fprintln(os.Stderr, "  bool grant_role(string role_name, string principal_name, PrincipalType principal_type, string grantor, PrincipalType grantorType, bool grant_option)")
-  fmt.Fprintln(os.Stderr, "  bool revoke_role(string role_name, string principal_name, PrincipalType principal_type)")
-  fmt.Fprintln(os.Stderr, "   list_roles(string principal_name, PrincipalType principal_type)")
-  fmt.Fprintln(os.Stderr, "  PrincipalPrivilegeSet get_privilege_set(HiveObjectRef hiveObject, string user_name,  group_names)")
-  fmt.Fprintln(os.Stderr, "   list_privileges(string principal_name, PrincipalType principal_type, HiveObjectRef hiveObject)")
-  fmt.Fprintln(os.Stderr, "  bool grant_privileges(PrivilegeBag privileges)")
-  fmt.Fprintln(os.Stderr, "  bool revoke_privileges(PrivilegeBag privileges)")
-  fmt.Fprintln(os.Stderr, "  string get_delegation_token(string renewer_kerberos_principal_name)")
-  fmt.Fprintln(os.Stderr, "  string get_delegation_token_with_signature(string renewer_kerberos_principal_name, string token_signature)")
-  fmt.Fprintln(os.Stderr, "  i64 renew_delegation_token(string token_str_form)")
-  fmt.Fprintln(os.Stderr, "  void cancel_delegation_token(string token_str_form)")
-  fmt.Fprintln(os.Stderr, "  string getName()")
-  fmt.Fprintln(os.Stderr, "  string getVersion()")
-  fmt.Fprintln(os.Stderr, "  fb_status getStatus()")
-  fmt.Fprintln(os.Stderr, "  string getStatusDetails()")
-  fmt.Fprintln(os.Stderr, "   getCounters()")
-  fmt.Fprintln(os.Stderr, "  i64 getCounter(string key)")
-  fmt.Fprintln(os.Stderr, "  void setOption(string key, string value)")
-  fmt.Fprintln(os.Stderr, "  string getOption(string key)")
-  fmt.Fprintln(os.Stderr, "   getOptions()")
-  fmt.Fprintln(os.Stderr, "  string getCpuProfile(i32 profileDurationInSec)")
-  fmt.Fprintln(os.Stderr, "  i64 aliveSince()")
-  fmt.Fprintln(os.Stderr, "  void reinitialize()")
-  fmt.Fprintln(os.Stderr, "  void shutdown()")
-  fmt.Fprintln(os.Stderr)
-  os.Exit(0)
+	fmt.Fprintln(os.Stderr, "Usage of ", os.Args[0], " [-h host:port] [-u url] [-f[ramed]] function [arg1 [arg2...]]:")
+	flag.PrintDefaults()
+	fmt.Fprintln(os.Stderr, "\nFunctions:")
+	fmt.Fprintln(os.Stderr, "  void create_database(Database database)")
+	fmt.Fprintln(os.Stderr, "  Database get_database(string name)")
+	fmt.Fprintln(os.Stderr, "  void drop_database(string name, bool deleteData)")
+	fmt.Fprintln(os.Stderr, "   get_databases(string pattern)")
+	fmt.Fprintln(os.Stderr, "   get_all_databases()")
+	fmt.Fprintln(os.Stderr, "  void alter_database(string dbname, Database db)")
+	fmt.Fprintln(os.Stderr, "  Type get_type(string name)")
+	fmt.Fprintln(os.Stderr, "  bool create_type(Type type)")
+	fmt.Fprintln(os.Stderr, "  bool drop_type(string type)")
+	fmt.Fprintln(os.Stderr, "   get_type_all(string name)")
+	fmt.Fprintln(os.Stderr, "   get_fields(string db_name, string table_name)")
+	fmt.Fprintln(os.Stderr, "   get_schema(string db_name, string table_name)")
+	fmt.Fprintln(os.Stderr, "  void create_table(Table tbl)")
+	fmt.Fprintln(os.Stderr, "  void drop_table(string dbname, string name, bool deleteData)")
+	fmt.Fprintln(os.Stderr, "   get_tables(string db_name, string pattern)")
+	fmt.Fprintln(os.Stderr, "   get_all_tables(string db_name)")
+	fmt.Fprintln(os.Stderr, "  Table get_table(string dbname, string tbl_name)")
+	fmt.Fprintln(os.Stderr, "  void alter_table(string dbname, string tbl_name, Table new_tbl)")
+	fmt.Fprintln(os.Stderr, "  Partition add_partition(Partition new_part)")
+	fmt.Fprintln(os.Stderr, "  Partition append_partition(string db_name, string tbl_name,  part_vals)")
+	fmt.Fprintln(os.Stderr, "  Partition append_partition_by_name(string db_name, string tbl_name, string part_name)")
+	fmt.Fprintln(os.Stderr, "  bool drop_partition(string db_name, string tbl_name,  part_vals, bool deleteData)")
+	fmt.Fprintln(os.Stderr, "  bool drop_partition_by_name(string db_name, string tbl_name, string part_name, bool deleteData)")
+	fmt.Fprintln(os.Stderr, "  Partition get_partition(string db_name, string tbl_name,  part_vals)")
+	fmt.Fprintln(os.Stderr, "  Partition get_partition_with_auth(string db_name, string tbl_name,  part_vals, string user_name,  group_names)")
+	fmt.Fprintln(os.Stderr, "  Partition get_partition_by_name(string db_name, string tbl_name, string part_name)")
+	fmt.Fprintln(os.Stderr, "   get_partitions(string db_name, string tbl_name, i16 max_parts)")
+	fmt.Fprintln(os.Stderr, "   get_partitions_with_auth(string db_name, string tbl_name, i16 max_parts, string user_name,  group_names)")
+	fmt.Fprintln(os.Stderr, "   get_partition_names(string db_name, string tbl_name, i16 max_parts)")
+	fmt.Fprintln(os.Stderr, "   get_partitions_ps(string db_name, string tbl_name,  part_vals, i16 max_parts)")
+	fmt.Fprintln(os.Stderr, "   get_partitions_ps_with_auth(string db_name, string tbl_name,  part_vals, i16 max_parts, string user_name,  group_names)")
+	fmt.Fprintln(os.Stderr, "   get_partition_names_ps(string db_name, string tbl_name,  part_vals, i16 max_parts)")
+	fmt.Fprintln(os.Stderr, "   get_partitions_by_filter(string db_name, string tbl_name, string filter, i16 max_parts)")
+	fmt.Fprintln(os.Stderr, "  void alter_partition(string db_name, string tbl_name, Partition new_part)")
+	fmt.Fprintln(os.Stderr, "  string get_config_value(string name, string defaultValue)")
+	fmt.Fprintln(os.Stderr, "   partition_name_to_vals(string part_name)")
+	fmt.Fprintln(os.Stderr, "   partition_name_to_spec(string part_name)")
+	fmt.Fprintln(os.Stderr, "  Index add_index(Index new_index, Table index_table)")
+	fmt.Fprintln(os.Stderr, "  void alter_index(string dbname, string base_tbl_name, string idx_name, Index new_idx)")
+	fmt.Fprintln(os.Stderr, "  bool drop_index_by_name(string db_name, string tbl_name, string index_name, bool deleteData)")
+	fmt.Fprintln(os.Stderr, "  Index get_index_by_name(string db_name, string tbl_name, string index_name)")
+	fmt.Fprintln(os.Stderr, "   get_indexes(string db_name, string tbl_name, i16 max_indexes)")
+	fmt.Fprintln(os.Stderr, "   get_index_names(string db_name, string tbl_name, i16 max_indexes)")
+	fmt.Fprintln(os.Stderr, "  bool create_role(Role role)")
+	fmt.Fprintln(os.Stderr, "  bool drop_role(string role_name)")
+	fmt.Fprintln(os.Stderr, "   get_role_names()")
+	fmt.Fprintln(os.Stderr, "  bool grant_role(string role_name, string principal_name, PrincipalType principal_type, string grantor, PrincipalType grantorType, bool grant_option)")
+	fmt.Fprintln(os.Stderr, "  bool revoke_role(string role_name, string principal_name, PrincipalType principal_type)")
+	fmt.Fprintln(os.Stderr, "   list_roles(string principal_name, PrincipalType principal_type)")
+	fmt.Fprintln(os.Stderr, "  PrincipalPrivilegeSet get_privilege_set(HiveObjectRef hiveObject, string user_name,  group_names)")
+	fmt.Fprintln(os.Stderr, "   list_privileges(string principal_name, PrincipalType principal_type, HiveObjectRef hiveObject)")
+	fmt.Fprintln(os.Stderr, "  bool grant_privileges(PrivilegeBag privileges)")
+	fmt.Fprintln(os.Stderr, "  bool revoke_privileges(PrivilegeBag privileges)")
+	fmt.Fprintln(os.Stderr, "  string get_delegation_token(string renewer_kerberos_principal_name)")
+	fmt.Fprintln(os.Stderr, "  string get_delegation_token_with_signature(string renewer_kerberos_principal_name, string token_signature)")
+	fmt.Fprintln(os.Stderr, "  i64 renew_delegation_token(string token_str_form)")
+	fmt.Fprintln(os.Stderr, "  void cancel_delegation_token(string token_str_form)")
+	fmt.Fprintln(os.Stderr, "  string getName()")
+	fmt.Fprintln(os.Stderr, "  string getVersion()")
+	fmt.Fprintln(os.Stderr, "  fb_status getStatus()")
+	fmt.Fprintln(os.Stderr, "  string getStatusDetails()")
+	fmt.Fprintln(os.Stderr, "   getCounters()")
+	fmt.Fprintln(os.Stderr, "  i64 getCounter(string key)")
+	fmt.Fprintln(os.Stderr, "  void setOption(string key, string value)")
+	fmt.Fprintln(os.Stderr, "  string getOption(string key)")
+	fmt.Fprintln(os.Stderr, "   getOptions()")
+	fmt.Fprintln(os.Stderr, "  string getCpuProfile(i32 profileDurationInSec)")
+	fmt.Fprintln(os.Stderr, "  i64 aliveSince()")
+	fmt.Fprintln(os.Stderr, "  void reinitialize()")
+	fmt.Fprintln(os.Stderr, "  void shutdown()")
+	fmt.Fprintln(os.Stderr)
+	os.Exit(0)
 }
 
 type httpHeaders map[string]string
 
 func (h httpHeaders) String() string {
-  var m map[string]string = h
-  return fmt.Sprintf("%s", m)
+	var m map[string]string = h
+	return fmt.Sprintf("%s", m)
 }
 
 func (h httpHeaders) Set(value string) error {
-  parts := strings.Split(value, ": ")
-  if len(parts) != 2 {
-    return fmt.Errorf("header should be of format 'Key: Value'")
-  }
-  h[parts[0]] = parts[1]
-  return nil
+	parts := strings.Split(value, ": ")
+	if len(parts) != 2 {
+		return fmt.Errorf("header should be of format 'Key: Value'")
+	}
+	h[parts[0]] = parts[1]
+	return nil
 }
 
 func main() {
-  flag.Usage = Usage
-  var host string
-  var port int
-  var protocol string
-  var urlString string
-  var framed bool
-  var useHttp bool
-  headers := make(httpHeaders)
-  var parsedUrl *url.URL
-  var trans thrift.TTransport
-  _ = strconv.Atoi
-  _ = math.Abs
-  flag.Usage = Usage
-  flag.StringVar(&host, "h", "localhost", "Specify host and port")
-  flag.IntVar(&port, "p", 9090, "Specify port")
-  flag.StringVar(&protocol, "P", "binary", "Specify the protocol (binary, compact, simplejson, json)")
-  flag.StringVar(&urlString, "u", "", "Specify the url")
-  flag.BoolVar(&framed, "framed", false, "Use framed transport")
-  flag.BoolVar(&useHttp, "http", false, "Use http")
-  flag.Var(headers, "H", "Headers to set on the http(s) request (e.g. -H \"Key: Value\")")
-  flag.Parse()
-  
-  if len(urlString) > 0 {
-    var err error
-    parsedUrl, err = url.Parse(urlString)
-    if err != nil {
-      fmt.Fprintln(os.Stderr, "Error parsing URL: ", err)
-      flag.Usage()
-    }
-    host = parsedUrl.Host
-    useHttp = len(parsedUrl.Scheme) <= 0 || parsedUrl.Scheme == "http" || parsedUrl.Scheme == "https"
-  } else if useHttp {
-    _, err := url.Parse(fmt.Sprint("http://", host, ":", port))
-    if err != nil {
-      fmt.Fprintln(os.Stderr, "Error parsing URL: ", err)
-      flag.Usage()
-    }
-  }
-  
-  cmd := flag.Arg(0)
-  var err error
-  if useHttp {
-    trans, err = thrift.NewTHttpClient(parsedUrl.String())
-    if len(headers) > 0 {
-      httptrans := trans.(*thrift.THttpClient)
-      for key, value := range headers {
-        httptrans.SetHeader(key, value)
-      }
-    }
-  } else {
-    portStr := fmt.Sprint(port)
-    if strings.Contains(host, ":") {
-           host, portStr, err = net.SplitHostPort(host)
-           if err != nil {
-                   fmt.Fprintln(os.Stderr, "error with host:", err)
-                   os.Exit(1)
-           }
-    }
-    trans, err = thrift.NewTSocket(net.JoinHostPort(host, portStr))
-    if err != nil {
-      fmt.Fprintln(os.Stderr, "error resolving address:", err)
-      os.Exit(1)
-    }
-    if framed {
-      trans = thrift.NewTFramedTransport(trans)
-    }
-  }
-  if err != nil {
-    fmt.Fprintln(os.Stderr, "Error creating transport", err)
-    os.Exit(1)
-  }
-  defer trans.Close()
-  var protocolFactory thrift.TProtocolFactory
-  switch protocol {
-  case "compact":
-    protocolFactory = thrift.NewTCompactProtocolFactory()
-    break
-  case "simplejson":
-    protocolFactory = thrift.NewTSimpleJSONProtocolFactory()
-    break
-  case "json":
-    protocolFactory = thrift.NewTJSONProtocolFactory()
-    break
-  case "binary", "":
-    protocolFactory = thrift.NewTBinaryProtocolFactoryDefault()
-    break
-  default:
-    fmt.Fprintln(os.Stderr, "Invalid protocol specified: ", protocol)
-    Usage()
-    os.Exit(1)
-  }
-  iprot := protocolFactory.GetProtocol(trans)
-  oprot := protocolFactory.GetProtocol(trans)
-  client := hive_metastore.NewThriftHiveMetastoreClient(thrift.NewTStandardClient(iprot, oprot))
-  if err := trans.Open(); err != nil {
-    fmt.Fprintln(os.Stderr, "Error opening socket to ", host, ":", port, " ", err)
-    os.Exit(1)
-  }
-  
-  switch cmd {
-  case "create_database":
-    if flag.NArg() - 1 != 1 {
-      fmt.Fprintln(os.Stderr, "CreateDatabase requires 1 args")
-      flag.Usage()
-    }
-    arg181 := flag.Arg(1)
-    mbTrans182 := thrift.NewTMemoryBufferLen(len(arg181))
-    defer mbTrans182.Close()
-    _, err183 := mbTrans182.WriteString(arg181)
-    if err183 != nil {
-      Usage()
-      return
-    }
-    factory184 := thrift.NewTJSONProtocolFactory()
-    jsProt185 := factory184.GetProtocol(mbTrans182)
-    argvalue0 := hive_metastore.NewDatabase()
-    err186 := argvalue0.Read(jsProt185)
-    if err186 != nil {
-      Usage()
-      return
-    }
-    value0 := argvalue0
-    fmt.Print(client.CreateDatabase(context.Background(), value0))
-    fmt.Print("\n")
-    break
-  case "get_database":
-    if flag.NArg() - 1 != 1 {
-      fmt.Fprintln(os.Stderr, "GetDatabase requires 1 args")
-      flag.Usage()
-    }
-    argvalue0 := flag.Arg(1)
-    value0 := argvalue0
-    fmt.Print(client.GetDatabase(context.Background(), value0))
-    fmt.Print("\n")
-    break
-  case "drop_database":
-    if flag.NArg() - 1 != 2 {
-      fmt.Fprintln(os.Stderr, "DropDatabase requires 2 args")
-      flag.Usage()
-    }
-    argvalue0 := flag.Arg(1)
-    value0 := argvalue0
-    argvalue1 := flag.Arg(2) == "true"
-    value1 := argvalue1
-    fmt.Print(client.DropDatabase(context.Background(), value0, value1))
-    fmt.Print("\n")
-    break
-  case "get_databases":
-    if flag.NArg() - 1 != 1 {
-      fmt.Fprintln(os.Stderr, "GetDatabases requires 1 args")
-      flag.Usage()
-    }
-    argvalue0 := flag.Arg(1)
-    value0 := argvalue0
-    fmt.Print(client.GetDatabases(context.Background(), value0))
-    fmt.Print("\n")
-    break
-  case "get_all_databases":
-    if flag.NArg() - 1 != 0 {
-      fmt.Fprintln(os.Stderr, "GetAllDatabases requires 0 args")
-      flag.Usage()
-    }
-    fmt.Print(client.GetAllDatabases(context.Background()))
-    fmt.Print("\n")
-    break
-  case "alter_database":
-    if flag.NArg() - 1 != 2 {
-      fmt.Fprintln(os.Stderr, "AlterDatabase requires 2 args")
-      flag.Usage()
-    }
-    argvalue0 := flag.Arg(1)
-    value0 := argvalue0
-    arg192 := flag.Arg(2)
-    mbTrans193 := thrift.NewTMemoryBufferLen(len(arg192))
-    defer mbTrans193.Close()
-    _, err194 := mbTrans193.WriteString(arg192)
-    if err194 != nil {
-      Usage()
-      return
-    }
-    factory195 := thrift.NewTJSONProtocolFactory()
-    jsProt196 := factory195.GetProtocol(mbTrans193)
-    argvalue1 := hive_metastore.NewDatabase()
-    err197 := argvalue1.Read(jsProt196)
-    if err197 != nil {
-      Usage()
-      return
-    }
-    value1 := argvalue1
-    fmt.Print(client.AlterDatabase(context.Background(), value0, value1))
-    fmt.Print("\n")
-    break
-  case "get_type":
-    if flag.NArg() - 1 != 1 {
-      fmt.Fprintln(os.Stderr, "GetType requires 1 args")
-      flag.Usage()
-    }
-    argvalue0 := flag.Arg(1)
-    value0 := argvalue0
-    fmt.Print(client.GetType(context.Background(), value0))
-    fmt.Print("\n")
-    break
-  case "create_type":
-    if flag.NArg() - 1 != 1 {
-      fmt.Fprintln(os.Stderr, "CreateType requires 1 args")
-      flag.Usage()
-    }
-    arg199 := flag.Arg(1)
-    mbTrans200 := thrift.NewTMemoryBufferLen(len(arg199))
-    defer mbTrans200.Close()
-    _, err201 := mbTrans200.WriteString(arg199)
-    if err201 != nil {
-      Usage()
-      return
-    }
-    factory202 := thrift.NewTJSONProtocolFactory()
-    jsProt203 := factory202.GetProtocol(mbTrans200)
-    argvalue0 := hive_metastore.NewType()
-    err204 := argvalue0.Read(jsProt203)
-    if err204 != nil {
-      Usage()
-      return
-    }
-    value0 := argvalue0
-    fmt.Print(client.CreateType(context.Background(), value0))
-    fmt.Print("\n")
-    break
-  case "drop_type":
-    if flag.NArg() - 1 != 1 {
-      fmt.Fprintln(os.Stderr, "DropType requires 1 args")
-      flag.Usage()
-    }
-    argvalue0 := flag.Arg(1)
-    value0 := argvalue0
-    fmt.Print(client.DropType(context.Background(), value0))
-    fmt.Print("\n")
-    break
-  case "get_type_all":
-    if flag.NArg() - 1 != 1 {
-      fmt.Fprintln(os.Stderr, "GetTypeAll requires 1 args")
-      flag.Usage()
-    }
-    argvalue0 := flag.Arg(1)
-    value0 := argvalue0
-    fmt.Print(client.GetTypeAll(context.Background(), value0))
-    fmt.Print("\n")
-    break
-  case "get_fields":
-    if flag.NArg() - 1 != 2 {
-      fmt.Fprintln(os.Stderr, "GetFields requires 2 args")
-      flag.Usage()
-    }
-    argvalue0 := flag.Arg(1)
-    value0 := argvalue0
-    argvalue1 := flag.Arg(2)
-    value1 := argvalue1
-    fmt.Print(client.GetFields(context.Background(), value0, value1))
-    fmt.Print("\n")
-    break
-  case "get_schema":
-    if flag.NArg() - 1 != 2 {
-      fmt.Fprintln(os.Stderr, "GetSchema requires 2 args")
-      flag.Usage()
-    }
-    argvalue0 := flag.Arg(1)
-    value0 := argvalue0
-    argvalue1 := flag.Arg(2)
-    value1 := argvalue1
-    fmt.Print(client.GetSchema(context.Background(), value0, value1))
-    fmt.Print("\n")
-    break
-  case "create_table":
-    if flag.NArg() - 1 != 1 {
-      fmt.Fprintln(os.Stderr, "CreateTable requires 1 args")
-      flag.Usage()
-    }
-    arg211 := flag.Arg(1)
-    mbTrans212 := thrift.NewTMemoryBufferLen(len(arg211))
-    defer mbTrans212.Close()
-    _, err213 := mbTrans212.WriteString(arg211)
-    if err213 != nil {
-      Usage()
-      return
-    }
-    factory214 := thrift.NewTJSONProtocolFactory()
-    jsProt215 := factory214.GetProtocol(mbTrans212)
-    argvalue0 := hive_metastore.NewTable()
-    err216 := argvalue0.Read(jsProt215)
-    if err216 != nil {
-      Usage()
-      return
-    }
-    value0 := argvalue0
-    fmt.Print(client.CreateTable(context.Background(), value0))
-    fmt.Print("\n")
-    break
-  case "drop_table":
-    if flag.NArg() - 1 != 3 {
-      fmt.Fprintln(os.Stderr, "DropTable requires 3 args")
-      flag.Usage()
-    }
-    argvalue0 := flag.Arg(1)
-    value0 := argvalue0
-    argvalue1 := flag.Arg(2)
-    value1 := argvalue1
-    argvalue2 := flag.Arg(3) == "true"
-    value2 := argvalue2
-    fmt.Print(client.DropTable(context.Background(), value0, value1, value2))
-    fmt.Print("\n")
-    break
-  case "get_tables":
-    if flag.NArg() - 1 != 2 {
-      fmt.Fprintln(os.Stderr, "GetTables requires 2 args")
-      flag.Usage()
-    }
-    argvalue0 := flag.Arg(1)
-    value0 := argvalue0
-    argvalue1 := flag.Arg(2)
-    value1 := argvalue1
-    fmt.Print(client.GetTables(context.Background(), value0, value1))
-    fmt.Print("\n")
-    break
-  case "get_all_tables":
-    if flag.NArg() - 1 != 1 {
-      fmt.Fprintln(os.Stderr, "GetAllTables requires 1 args")
-      flag.Usage()
-    }
-    argvalue0 := flag.Arg(1)
-    value0 := argvalue0
-    fmt.Print(client.GetAllTables(context.Background(), value0))
-    fmt.Print("\n")
-    break
-  case "get_table":
-    if flag.NArg() - 1 != 2 {
-      fmt.Fprintln(os.Stderr, "GetTable requires 2 args")
-      flag.Usage()
-    }
-    argvalue0 := flag.Arg(1)
-    value0 := argvalue0
-    argvalue1 := flag.Arg(2)
-    value1 := argvalue1
-    fmt.Print(client.GetTable(context.Background(), value0, value1))
-    fmt.Print("\n")
-    break
-  case "alter_table":
-    if flag.NArg() - 1 != 3 {
-      fmt.Fprintln(os.Stderr, "AlterTable requires 3 args")
-      flag.Usage()
-    }
-    argvalue0 := flag.Arg(1)
-    value0 := argvalue0
-    argvalue1 := flag.Arg(2)
-    value1 := argvalue1
-    arg227 := flag.Arg(3)
-    mbTrans228 := thrift.NewTMemoryBufferLen(len(arg227))
-    defer mbTrans228.Close()
-    _, err229 := mbTrans228.WriteString(arg227)
-    if err229 != nil {
-      Usage()
-      return
-    }
-    factory230 := thrift.NewTJSONProtocolFactory()
-    jsProt231 := factory230.GetProtocol(mbTrans228)
-    argvalue2 := hive_metastore.NewTable()
-    err232 := argvalue2.Read(jsProt231)
-    if err232 != nil {
-      Usage()
-      return
-    }
-    value2 := argvalue2
-    fmt.Print(client.AlterTable(context.Background(), value0, value1, value2))
-    fmt.Print("\n")
-    break
-  case "add_partition":
-    if flag.NArg() - 1 != 1 {
-      fmt.Fprintln(os.Stderr, "AddPartition requires 1 args")
-      flag.Usage()
-    }
-    arg233 := flag.Arg(1)
-    mbTrans234 := thrift.NewTMemoryBufferLen(len(arg233))
-    defer mbTrans234.Close()
-    _, err235 := mbTrans234.WriteString(arg233)
-    if err235 != nil {
-      Usage()
-      return
-    }
-    factory236 := thrift.NewTJSONProtocolFactory()
-    jsProt237 := factory236.GetProtocol(mbTrans234)
-    argvalue0 := hive_metastore.NewPartition()
-    err238 := argvalue0.Read(jsProt237)
-    if err238 != nil {
-      Usage()
-      return
-    }
-    value0 := argvalue0
-    fmt.Print(client.AddPartition(context.Background(), value0))
-    fmt.Print("\n")
-    break
-  case "append_partition":
-    if flag.NArg() - 1 != 3 {
-      fmt.Fprintln(os.Stderr, "AppendPartition requires 3 args")
-      flag.Usage()
-    }
-    argvalue0 := flag.Arg(1)
-    value0 := argvalue0
-    argvalue1 := flag.Arg(2)
-    value1 := argvalue1
-    arg241 := flag.Arg(3)
-    mbTrans242 := thrift.NewTMemoryBufferLen(len(arg241))
-    defer mbTrans242.Close()
-    _, err243 := mbTrans242.WriteString(arg241)
-    if err243 != nil { 
-      Usage()
-      return
-    }
-    factory244 := thrift.NewTJSONProtocolFactory()
-    jsProt245 := factory244.GetProtocol(mbTrans242)
-    containerStruct2 := hive_metastore.NewThriftHiveMetastoreAppendPartitionArgs()
-    err246 := containerStruct2.ReadField3(jsProt245)
-    if err246 != nil {
-      Usage()
-      return
-    }
-    argvalue2 := containerStruct2.PartVals
-    value2 := argvalue2
-    fmt.Print(client.AppendPartition(context.Background(), value0, value1, value2))
-    fmt.Print("\n")
-    break
-  case "append_partition_by_name":
-    if flag.NArg() - 1 != 3 {
-      fmt.Fprintln(os.Stderr, "AppendPartitionByName requires 3 args")
-      flag.Usage()
-    }
-    argvalue0 := flag.Arg(1)
-    value0 := argvalue0
-    argvalue1 := flag.Arg(2)
-    value1 := argvalue1
-    argvalue2 := flag.Arg(3)
-    value2 := argvalue2
-    fmt.Print(client.AppendPartitionByName(context.Background(), value0, value1, value2))
-    fmt.Print("\n")
-    break
-  case "drop_partition":
-    if flag.NArg() - 1 != 4 {
-      fmt.Fprintln(os.Stderr, "DropPartition requires 4 args")
-      flag.Usage()
-    }
-    argvalue0 := flag.Arg(1)
-    value0 := argvalue0
-    argvalue1 := flag.Arg(2)
-    value1 := argvalue1
-    arg252 := flag.Arg(3)
-    mbTrans253 := thrift.NewTMemoryBufferLen(len(arg252))
-    defer mbTrans253.Close()
-    _, err254 := mbTrans253.WriteString(arg252)
-    if err254 != nil { 
-      Usage()
-      return
-    }
-    factory255 := thrift.NewTJSONProtocolFactory()
-    jsProt256 := factory255.GetProtocol(mbTrans253)
-    containerStruct2 := hive_metastore.NewThriftHiveMetastoreDropPartitionArgs()
-    err257 := containerStruct2.ReadField3(jsProt256)
-    if err257 != nil {
-      Usage()
-      return
-    }
-    argvalue2 := containerStruct2.PartVals
-    value2 := argvalue2
-    argvalue3 := flag.Arg(4) == "true"
-    value3 := argvalue3
-    fmt.Print(client.DropPartition(context.Background(), value0, value1, value2, value3))
-    fmt.Print("\n")
-    break
-  case "drop_partition_by_name":
-    if flag.NArg() - 1 != 4 {
-      fmt.Fprintln(os.Stderr, "DropPartitionByName requires 4 args")
-      flag.Usage()
-    }
-    argvalue0 := flag.Arg(1)
-    value0 := argvalue0
-    argvalue1 := flag.Arg(2)
-    value1 := argvalue1
-    argvalue2 := flag.Arg(3)
-    value2 := argvalue2
-    argvalue3 := flag.Arg(4) == "true"
-    value3 := argvalue3
-    fmt.Print(client.DropPartitionByName(context.Background(), value0, value1, value2, value3))
-    fmt.Print("\n")
-    break
-  case "get_partition":
-    if flag.NArg() - 1 != 3 {
-      fmt.Fprintln(os.Stderr, "GetPartition requires 3 args")
-      flag.Usage()
-    }
-    argvalue0 := flag.Arg(1)
-    value0 := argvalue0
-    argvalue1 := flag.Arg(2)
-    value1 := argvalue1
-    arg265 := flag.Arg(3)
-    mbTrans266 := thrift.NewTMemoryBufferLen(len(arg265))
-    defer mbTrans266.Close()
-    _, err267 := mbTrans266.WriteString(arg265)
-    if err267 != nil { 
-      Usage()
-      return
-    }
-    factory268 := thrift.NewTJSONProtocolFactory()
-    jsProt269 := factory268.GetProtocol(mbTrans266)
-    containerStruct2 := hive_metastore.NewThriftHiveMetastoreGetPartitionArgs()
-    err270 := containerStruct2.ReadField3(jsProt269)
-    if err270 != nil {
-      Usage()
-      return
-    }
-    argvalue2 := containerStruct2.PartVals
-    value2 := argvalue2
-    fmt.Print(client.GetPartition(context.Background(), value0, value1, value2))
-    fmt.Print("\n")
-    break
-  case "get_partition_with_auth":
-    if flag.NArg() - 1 != 5 {
-      fmt.Fprintln(os.Stderr, "GetPartitionWithAuth requires 5 args")
-      flag.Usage()
-    }
-    argvalue0 := flag.Arg(1)
-    value0 := argvalue0
-    argvalue1 := flag.Arg(2)
-    value1 := argvalue1
-    arg273 := flag.Arg(3)
-    mbTrans274 := thrift.NewTMemoryBufferLen(len(arg273))
-    defer mbTrans274.Close()
-    _, err275 := mbTrans274.WriteString(arg273)
-    if err275 != nil { 
-      Usage()
-      return
-    }
-    factory276 := thrift.NewTJSONProtocolFactory()
-    jsProt277 := factory276.GetProtocol(mbTrans274)
-    containerStruct2 := hive_metastore.NewThriftHiveMetastoreGetPartitionWithAuthArgs()
-    err278 := containerStruct2.ReadField3(jsProt277)
-    if err278 != nil {
-      Usage()
-      return
-    }
-    argvalue2 := containerStruct2.PartVals
-    value2 := argvalue2
-    argvalue3 := flag.Arg(4)
-    value3 := argvalue3
-    arg280 := flag.Arg(5)
-    mbTrans281 := thrift.NewTMemoryBufferLen(len(arg280))
-    defer mbTrans281.Close()
-    _, err282 := mbTrans281.WriteString(arg280)
-    if err282 != nil { 
-      Usage()
-      return
-    }
-    factory283 := thrift.NewTJSONProtocolFactory()
-    jsProt284 := factory283.GetProtocol(mbTrans281)
-    containerStruct4 := hive_metastore.NewThriftHiveMetastoreGetPartitionWithAuthArgs()
-    err285 := containerStruct4.ReadField5(jsProt284)
-    if err285 != nil {
-      Usage()
-      return
-    }
-    argvalue4 := containerStruct4.GroupNames
-    value4 := argvalue4
-    fmt.Print(client.GetPartitionWithAuth(context.Background(), value0, value1, value2, value3, value4))
-    fmt.Print("\n")
-    break
-  case "get_partition_by_name":
-    if flag.NArg() - 1 != 3 {
-      fmt.Fprintln(os.Stderr, "GetPartitionByName requires 3 args")
-      flag.Usage()
-    }
-    argvalue0 := flag.Arg(1)
-    value0 := argvalue0
-    argvalue1 := flag.Arg(2)
-    value1 := argvalue1
-    argvalue2 := flag.Arg(3)
-    value2 := argvalue2
-    fmt.Print(client.GetPartitionByName(context.Background(), value0, value1, value2))
-    fmt.Print("\n")
-    break
-  case "get_partitions":
-    if flag.NArg() - 1 != 3 {
-      fmt.Fprintln(os.Stderr, "GetPartitions requires 3 args")
-      flag.Usage()
-    }
-    argvalue0 := flag.Arg(1)
-    value0 := argvalue0
-    argvalue1 := flag.Arg(2)
-    value1 := argvalue1
-    tmp2, err291 := (strconv.Atoi(flag.Arg(3)))
-    if err291 != nil {
-      Usage()
-      return
-    }
-    argvalue2 := int16(tmp2)
-    value2 := argvalue2
-    fmt.Print(client.GetPartitions(context.Background(), value0, value1, value2))
-    fmt.Print("\n")
-    break
-  case "get_partitions_with_auth":
-    if flag.NArg() - 1 != 5 {
-      fmt.Fprintln(os.Stderr, "GetPartitionsWithAuth requires 5 args")
-      flag.Usage()
-    }
-    argvalue0 := flag.Arg(1)
-    value0 := argvalue0
-    argvalue1 := flag.Arg(2)
-    value1 := argvalue1
-    tmp2, err294 := (strconv.Atoi(flag.Arg(3)))
-    if err294 != nil {
-      Usage()
-      return
-    }
-    argvalue2 := int16(tmp2)
-    value2 := argvalue2
-    argvalue3 := flag.Arg(4)
-    value3 := argvalue3
-    arg296 := flag.Arg(5)
-    mbTrans297 := thrift.NewTMemoryBufferLen(len(arg296))
-    defer mbTrans297.Close()
-    _, err298 := mbTrans297.WriteString(arg296)
-    if err298 != nil { 
-      Usage()
-      return
-    }
-    factory299 := thrift.NewTJSONProtocolFactory()
-    jsProt300 := factory299.GetProtocol(mbTrans297)
-    containerStruct4 := hive_metastore.NewThriftHiveMetastoreGetPartitionsWithAuthArgs()
-    err301 := containerStruct4.ReadField5(jsProt300)
-    if err301 != nil {
-      Usage()
-      return
-    }
-    argvalue4 := containerStruct4.GroupNames
-    value4 := argvalue4
-    fmt.Print(client.GetPartitionsWithAuth(context.Background(), value0, value1, value2, value3, value4))
-    fmt.Print("\n")
-    break
-  case "get_partition_names":
-    if flag.NArg() - 1 != 3 {
-      fmt.Fprintln(os.Stderr, "GetPartitionNames requires 3 args")
-      flag.Usage()
-    }
-    argvalue0 := flag.Arg(1)
-    value0 := argvalue0
-    argvalue1 := flag.Arg(2)
-    value1 := argvalue1
-    tmp2, err304 := (strconv.Atoi(flag.Arg(3)))
-    if err304 != nil {
-      Usage()
-      return
-    }
-    argvalue2 := int16(tmp2)
-    value2 := argvalue2
-    fmt.Print(client.GetPartitionNames(context.Background(), value0, value1, value2))
-    fmt.Print("\n")
-    break
-  case "get_partitions_ps":
-    if flag.NArg() - 1 != 4 {
-      fmt.Fprintln(os.Stderr, "GetPartitionsPs requires 4 args")
-      flag.Usage()
-    }
-    argvalue0 := flag.Arg(1)
-    value0 := argvalue0
-    argvalue1 := flag.Arg(2)
-    value1 := argvalue1
-    arg307 := flag.Arg(3)
-    mbTrans308 := thrift.NewTMemoryBufferLen(len(arg307))
-    defer mbTrans308.Close()
-    _, err309 := mbTrans308.WriteString(arg307)
-    if err309 != nil { 
-      Usage()
-      return
-    }
-    factory310 := thrift.NewTJSONProtocolFactory()
-    jsProt311 := factory310.GetProtocol(mbTrans308)
-    containerStruct2 := hive_metastore.NewThriftHiveMetastoreGetPartitionsPsArgs()
-    err312 := containerStruct2.ReadField3(jsProt311)
-    if err312 != nil {
-      Usage()
-      return
-    }
-    argvalue2 := containerStruct2.PartVals
-    value2 := argvalue2
-    tmp3, err313 := (strconv.Atoi(flag.Arg(4)))
-    if err313 != nil {
-      Usage()
-      return
-    }
-    argvalue3 := int16(tmp3)
-    value3 := argvalue3
-    fmt.Print(client.GetPartitionsPs(context.Background(), value0, value1, value2, value3))
-    fmt.Print("\n")
-    break
-  case "get_partitions_ps_with_auth":
-    if flag.NArg() - 1 != 6 {
-      fmt.Fprintln(os.Stderr, "GetPartitionsPsWithAuth requires 6 args")
-      flag.Usage()
-    }
-    argvalue0 := flag.Arg(1)
-    value0 := argvalue0
-    argvalue1 := flag.Arg(2)
-    value1 := argvalue1
-    arg316 := flag.Arg(3)
-    mbTrans317 := thrift.NewTMemoryBufferLen(len(arg316))
-    defer mbTrans317.Close()
-    _, err318 := mbTrans317.WriteString(arg316)
-    if err318 != nil { 
-      Usage()
-      return
-    }
-    factory319 := thrift.NewTJSONProtocolFactory()
-    jsProt320 := factory319.GetProtocol(mbTrans317)
-    containerStruct2 := hive_metastore.NewThriftHiveMetastoreGetPartitionsPsWithAuthArgs()
-    err321 := containerStruct2.ReadField3(jsProt320)
-    if err321 != nil {
-      Usage()
-      return
-    }
-    argvalue2 := containerStruct2.PartVals
-    value2 := argvalue2
-    tmp3, err322 := (strconv.Atoi(flag.Arg(4)))
-    if err322 != nil {
-      Usage()
-      return
-    }
-    argvalue3 := int16(tmp3)
-    value3 := argvalue3
-    argvalue4 := flag.Arg(5)
-    value4 := argvalue4
-    arg324 := flag.Arg(6)
-    mbTrans325 := thrift.NewTMemoryBufferLen(len(arg324))
-    defer mbTrans325.Close()
-    _, err326 := mbTrans325.WriteString(arg324)
-    if err326 != nil { 
-      Usage()
-      return
-    }
-    factory327 := thrift.NewTJSONProtocolFactory()
-    jsProt328 := factory327.GetProtocol(mbTrans325)
-    containerStruct5 := hive_metastore.NewThriftHiveMetastoreGetPartitionsPsWithAuthArgs()
-    err329 := containerStruct5.ReadField6(jsProt328)
-    if err329 != nil {
-      Usage()
-      return
-    }
-    argvalue5 := containerStruct5.GroupNames
-    value5 := argvalue5
-    fmt.Print(client.GetPartitionsPsWithAuth(context.Background(), value0, value1, value2, value3, value4, value5))
-    fmt.Print("\n")
-    break
-  case "get_partition_names_ps":
-    if flag.NArg() - 1 != 4 {
-      fmt.Fprintln(os.Stderr, "GetPartitionNamesPs requires 4 args")
-      flag.Usage()
-    }
-    argvalue0 := flag.Arg(1)
-    value0 := argvalue0
-    argvalue1 := flag.Arg(2)
-    value1 := argvalue1
-    arg332 := flag.Arg(3)
-    mbTrans333 := thrift.NewTMemoryBufferLen(len(arg332))
-    defer mbTrans333.Close()
-    _, err334 := mbTrans333.WriteString(arg332)
-    if err334 != nil { 
-      Usage()
-      return
-    }
-    factory335 := thrift.NewTJSONProtocolFactory()
-    jsProt336 := factory335.GetProtocol(mbTrans333)
-    containerStruct2 := hive_metastore.NewThriftHiveMetastoreGetPartitionNamesPsArgs()
-    err337 := containerStruct2.ReadField3(jsProt336)
-    if err337 != nil {
-      Usage()
-      return
-    }
-    argvalue2 := containerStruct2.PartVals
-    value2 := argvalue2
-    tmp3, err338 := (strconv.Atoi(flag.Arg(4)))
-    if err338 != nil {
-      Usage()
-      return
-    }
-    argvalue3 := int16(tmp3)
-    value3 := argvalue3
-    fmt.Print(client.GetPartitionNamesPs(context.Background(), value0, value1, value2, value3))
-    fmt.Print("\n")
-    break
-  case "get_partitions_by_filter":
-    if flag.NArg() - 1 != 4 {
-      fmt.Fprintln(os.Stderr, "GetPartitionsByFilter requires 4 args")
-      flag.Usage()
-    }
-    argvalue0 := flag.Arg(1)
-    value0 := argvalue0
-    argvalue1 := flag.Arg(2)
-    value1 := argvalue1
-    argvalue2 := flag.Arg(3)
-    value2 := argvalue2
-    tmp3, err342 := (strconv.Atoi(flag.Arg(4)))
-    if err342 != nil {
-      Usage()
-      return
-    }
-    argvalue3 := int16(tmp3)
-    value3 := argvalue3
-    fmt.Print(client.GetPartitionsByFilter(context.Background(), value0, value1, value2, value3))
-    fmt.Print("\n")
-    break
-  case "alter_partition":
-    if flag.NArg() - 1 != 3 {
-      fmt.Fprintln(os.Stderr, "AlterPartition requires 3 args")
-      flag.Usage()
-    }
-    argvalue0 := flag.Arg(1)
-    value0 := argvalue0
-    argvalue1 := flag.Arg(2)
-    value1 := argvalue1
-    arg345 := flag.Arg(3)
-    mbTrans346 := thrift.NewTMemoryBufferLen(len(arg345))
-    defer mbTrans346.Close()
-    _, err347 := mbTrans346.WriteString(arg345)
-    if err347 != nil {
-      Usage()
-      return
-    }
-    factory348 := thrift.NewTJSONProtocolFactory()
-    jsProt349 := factory348.GetProtocol(mbTrans346)
-    argvalue2 := hive_metastore.NewPartition()
-    err350 := argvalue2.Read(jsProt349)
-    if err350 != nil {
-      Usage()
-      return
-    }
-    value2 := argvalue2
-    fmt.Print(client.AlterPartition(context.Background(), value0, value1, value2))
-    fmt.Print("\n")
-    break
-  case "get_config_value":
-    if flag.NArg() - 1 != 2 {
-      fmt.Fprintln(os.Stderr, "GetConfigValue requires 2 args")
-      flag.Usage()
-    }
-    argvalue0 := flag.Arg(1)
-    value0 := argvalue0
-    argvalue1 := flag.Arg(2)
-    value1 := argvalue1
-    fmt.Print(client.GetConfigValue(context.Background(), value0, value1))
-    fmt.Print("\n")
-    break
-  case "partition_name_to_vals":
-    if flag.NArg() - 1 != 1 {
-      fmt.Fprintln(os.Stderr, "PartitionNameToVals requires 1 args")
-      flag.Usage()
-    }
-    argvalue0 := flag.Arg(1)
-    value0 := argvalue0
-    fmt.Print(client.PartitionNameToVals(context.Background(), value0))
-    fmt.Print("\n")
-    break
-  case "partition_name_to_spec":
-    if flag.NArg() - 1 != 1 {
-      fmt.Fprintln(os.Stderr, "PartitionNameToSpec requires 1 args")
-      flag.Usage()
-    }
-    argvalue0 := flag.Arg(1)
-    value0 := argvalue0
-    fmt.Print(client.PartitionNameToSpec(context.Background(), value0))
-    fmt.Print("\n")
-    break
-  case "add_index":
-    if flag.NArg() - 1 != 2 {
-      fmt.Fprintln(os.Stderr, "AddIndex requires 2 args")
-      flag.Usage()
-    }
-    arg355 := flag.Arg(1)
-    mbTrans356 := thrift.NewTMemoryBufferLen(len(arg355))
-    defer mbTrans356.Close()
-    _, err357 := mbTrans356.WriteString(arg355)
-    if err357 != nil {
-      Usage()
-      return
-    }
-    factory358 := thrift.NewTJSONProtocolFactory()
-    jsProt359 := factory358.GetProtocol(mbTrans356)
-    argvalue0 := hive_metastore.NewIndex()
-    err360 := argvalue0.Read(jsProt359)
-    if err360 != nil {
-      Usage()
-      return
-    }
-    value0 := argvalue0
-    arg361 := flag.Arg(2)
-    mbTrans362 := thrift.NewTMemoryBufferLen(len(arg361))
-    defer mbTrans362.Close()
-    _, err363 := mbTrans362.WriteString(arg361)
-    if err363 != nil {
-      Usage()
-      return
-    }
-    factory364 := thrift.NewTJSONProtocolFactory()
-    jsProt365 := factory364.GetProtocol(mbTrans362)
-    argvalue1 := hive_metastore.NewTable()
-    err366 := argvalue1.Read(jsProt365)
-    if err366 != nil {
-      Usage()
-      return
-    }
-    value1 := argvalue1
-    fmt.Print(client.AddIndex(context.Background(), value0, value1))
-    fmt.Print("\n")
-    break
-  case "alter_index":
-    if flag.NArg() - 1 != 4 {
-      fmt.Fprintln(os.Stderr, "AlterIndex requires 4 args")
-      flag.Usage()
-    }
-    argvalue0 := flag.Arg(1)
-    value0 := argvalue0
-    argvalue1 := flag.Arg(2)
-    value1 := argvalue1
-    argvalue2 := flag.Arg(3)
-    value2 := argvalue2
-    arg370 := flag.Arg(4)
-    mbTrans371 := thrift.NewTMemoryBufferLen(len(arg370))
-    defer mbTrans371.Close()
-    _, err372 := mbTrans371.WriteString(arg370)
-    if err372 != nil {
-      Usage()
-      return
-    }
-    factory373 := thrift.NewTJSONProtocolFactory()
-    jsProt374 := factory373.GetProtocol(mbTrans371)
-    argvalue3 := hive_metastore.NewIndex()
-    err375 := argvalue3.Read(jsProt374)
-    if err375 != nil {
-      Usage()
-      return
-    }
-    value3 := argvalue3
-    fmt.Print(client.AlterIndex(context.Background(), value0, value1, value2, value3))
-    fmt.Print("\n")
-    break
-  case "drop_index_by_name":
-    if flag.NArg() - 1 != 4 {
-      fmt.Fprintln(os.Stderr, "DropIndexByName requires 4 args")
-      flag.Usage()
-    }
-    argvalue0 := flag.Arg(1)
-    value0 := argvalue0
-    argvalue1 := flag.Arg(2)
-    value1 := argvalue1
-    argvalue2 := flag.Arg(3)
-    value2 := argvalue2
-    argvalue3 := flag.Arg(4) == "true"
-    value3 := argvalue3
-    fmt.Print(client.DropIndexByName(context.Background(), value0, value1, value2, value3))
-    fmt.Print("\n")
-    break
-  case "get_index_by_name":
-    if flag.NArg() - 1 != 3 {
-      fmt.Fprintln(os.Stderr, "GetIndexByName requires 3 args")
-      flag.Usage()
-    }
-    argvalue0 := flag.Arg(1)
-    value0 := argvalue0
-    argvalue1 := flag.Arg(2)
-    value1 := argvalue1
-    argvalue2 := flag.Arg(3)
-    value2 := argvalue2
-    fmt.Print(client.GetIndexByName(context.Background(), value0, value1, value2))
-    fmt.Print("\n")
-    break
-  case "get_indexes":
-    if flag.NArg() - 1 != 3 {
-      fmt.Fprintln(os.Stderr, "GetIndexes requires 3 args")
-      flag.Usage()
-    }
-    argvalue0 := flag.Arg(1)
-    value0 := argvalue0
-    argvalue1 := flag.Arg(2)
-    value1 := argvalue1
-    tmp2, err385 := (strconv.Atoi(flag.Arg(3)))
-    if err385 != nil {
-      Usage()
-      return
-    }
-    argvalue2 := int16(tmp2)
-    value2 := argvalue2
-    fmt.Print(client.GetIndexes(context.Background(), value0, value1, value2))
-    fmt.Print("\n")
-    break
-  case "get_index_names":
-    if flag.NArg() - 1 != 3 {
-      fmt.Fprintln(os.Stderr, "GetIndexNames requires 3 args")
-      flag.Usage()
-    }
-    argvalue0 := flag.Arg(1)
-    value0 := argvalue0
-    argvalue1 := flag.Arg(2)
-    value1 := argvalue1
-    tmp2, err388 := (strconv.Atoi(flag.Arg(3)))
-    if err388 != nil {
-      Usage()
-      return
-    }
-    argvalue2 := int16(tmp2)
-    value2 := argvalue2
-    fmt.Print(client.GetIndexNames(context.Background(), value0, value1, value2))
-    fmt.Print("\n")
-    break
-  case "create_role":
-    if flag.NArg() - 1 != 1 {
-      fmt.Fprintln(os.Stderr, "CreateRole requires 1 args")
-      flag.Usage()
-    }
-    arg389 := flag.Arg(1)
-    mbTrans390 := thrift.NewTMemoryBufferLen(len(arg389))
-    defer mbTrans390.Close()
-    _, err391 := mbTrans390.WriteString(arg389)
-    if err391 != nil {
-      Usage()
-      return
-    }
-    factory392 := thrift.NewTJSONProtocolFactory()
-    jsProt393 := factory392.GetProtocol(mbTrans390)
-    argvalue0 := hive_metastore.NewRole()
-    err394 := argvalue0.Read(jsProt393)
-    if err394 != nil {
-      Usage()
-      return
-    }
-    value0 := argvalue0
-    fmt.Print(client.CreateRole(context.Background(), value0))
-    fmt.Print("\n")
-    break
-  case "drop_role":
-    if flag.NArg() - 1 != 1 {
-      fmt.Fprintln(os.Stderr, "DropRole requires 1 args")
-      flag.Usage()
-    }
-    argvalue0 := flag.Arg(1)
-    value0 := argvalue0
-    fmt.Print(client.DropRole(context.Background(), value0))
-    fmt.Print("\n")
-    break
-  case "get_role_names":
-    if flag.NArg() - 1 != 0 {
-      fmt.Fprintln(os.Stderr, "GetRoleNames requires 0 args")
-      flag.Usage()
-    }
-    fmt.Print(client.GetRoleNames(context.Background()))
-    fmt.Print("\n")
-    break
-  case "grant_role":
-    if flag.NArg() - 1 != 6 {
-      fmt.Fprintln(os.Stderr, "GrantRole requires 6 args")
-      flag.Usage()
-    }
-    argvalue0 := flag.Arg(1)
-    value0 := argvalue0
-    argvalue1 := flag.Arg(2)
-    value1 := argvalue1
-    tmp2, err := (strconv.Atoi(flag.Arg(3)))
-    if err != nil {
-      Usage()
-     return
-    }
-    argvalue2 := hive_metastore.PrincipalType(tmp2)
-    value2 := argvalue2
-    argvalue3 := flag.Arg(4)
-    value3 := argvalue3
-    tmp4, err := (strconv.Atoi(flag.Arg(5)))
-    if err != nil {
-      Usage()
-     return
-    }
-    argvalue4 := hive_metastore.PrincipalType(tmp4)
-    value4 := argvalue4
-    argvalue5 := flag.Arg(6) == "true"
-    value5 := argvalue5
-    fmt.Print(client.GrantRole(context.Background(), value0, value1, value2, value3, value4, value5))
-    fmt.Print("\n")
-    break
-  case "revoke_role":
-    if flag.NArg() - 1 != 3 {
-      fmt.Fprintln(os.Stderr, "RevokeRole requires 3 args")
-      flag.Usage()
-    }
-    argvalue0 := flag.Arg(1)
-    value0 := argvalue0
-    argvalue1 := flag.Arg(2)
-    value1 := argvalue1
-    tmp2, err := (strconv.Atoi(flag.Arg(3)))
-    if err != nil {
-      Usage()
-     return
-    }
-    argvalue2 := hive_metastore.PrincipalType(tmp2)
-    value2 := argvalue2
-    fmt.Print(client.RevokeRole(context.Background(), value0, value1, value2))
-    fmt.Print("\n")
-    break
-  case "list_roles":
-    if flag.NArg() - 1 != 2 {
-      fmt.Fprintln(os.Stderr, "ListRoles requires 2 args")
-      flag.Usage()
-    }
-    argvalue0 := flag.Arg(1)
-    value0 := argvalue0
-    tmp1, err := (strconv.Atoi(flag.Arg(2)))
-    if err != nil {
-      Usage()
-     return
-    }
-    argvalue1 := hive_metastore.PrincipalType(tmp1)
-    value1 := argvalue1
-    fmt.Print(client.ListRoles(context.Background(), value0, value1))
-    fmt.Print("\n")
-    break
-  case "get_privilege_set":
-    if flag.NArg() - 1 != 3 {
-      fmt.Fprintln(os.Stderr, "GetPrivilegeSet requires 3 args")
-      flag.Usage()
-    }
-    arg403 := flag.Arg(1)
-    mbTrans404 := thrift.NewTMemoryBufferLen(len(arg403))
-    defer mbTrans404.Close()
-    _, err405 := mbTrans404.WriteString(arg403)
-    if err405 != nil {
-      Usage()
-      return
-    }
-    factory406 := thrift.NewTJSONProtocolFactory()
-    jsProt407 := factory406.GetProtocol(mbTrans404)
-    argvalue0 := hive_metastore.NewHiveObjectRef()
-    err408 := argvalue0.Read(jsProt407)
-    if err408 != nil {
-      Usage()
-      return
-    }
-    value0 := argvalue0
-    argvalue1 := flag.Arg(2)
-    value1 := argvalue1
-    arg410 := flag.Arg(3)
-    mbTrans411 := thrift.NewTMemoryBufferLen(len(arg410))
-    defer mbTrans411.Close()
-    _, err412 := mbTrans411.WriteString(arg410)
-    if err412 != nil { 
-      Usage()
-      return
-    }
-    factory413 := thrift.NewTJSONProtocolFactory()
-    jsProt414 := factory413.GetProtocol(mbTrans411)
-    containerStruct2 := hive_metastore.NewThriftHiveMetastoreGetPrivilegeSetArgs()
-    err415 := containerStruct2.ReadField3(jsProt414)
-    if err415 != nil {
-      Usage()
-      return
-    }
-    argvalue2 := containerStruct2.GroupNames
-    value2 := argvalue2
-    fmt.Print(client.GetPrivilegeSet(context.Background(), value0, value1, value2))
-    fmt.Print("\n")
-    break
-  case "list_privileges":
-    if flag.NArg() - 1 != 3 {
-      fmt.Fprintln(os.Stderr, "ListPrivileges requires 3 args")
-      flag.Usage()
-    }
-    argvalue0 := flag.Arg(1)
-    value0 := argvalue0
-    tmp1, err := (strconv.Atoi(flag.Arg(2)))
-    if err != nil {
-      Usage()
-     return
-    }
-    argvalue1 := hive_metastore.PrincipalType(tmp1)
-    value1 := argvalue1
-    arg417 := flag.Arg(3)
-    mbTrans418 := thrift.NewTMemoryBufferLen(len(arg417))
-    defer mbTrans418.Close()
-    _, err419 := mbTrans418.WriteString(arg417)
-    if err419 != nil {
-      Usage()
-      return
-    }
-    factory420 := thrift.NewTJSONProtocolFactory()
-    jsProt421 := factory420.GetProtocol(mbTrans418)
-    argvalue2 := hive_metastore.NewHiveObjectRef()
-    err422 := argvalue2.Read(jsProt421)
-    if err422 != nil {
-      Usage()
-      return
-    }
-    value2 := argvalue2
-    fmt.Print(client.ListPrivileges(context.Background(), value0, value1, value2))
-    fmt.Print("\n")
-    break
-  case "grant_privileges":
-    if flag.NArg() - 1 != 1 {
-      fmt.Fprintln(os.Stderr, "GrantPrivileges requires 1 args")
-      flag.Usage()
-    }
-    arg423 := flag.Arg(1)
-    mbTrans424 := thrift.NewTMemoryBufferLen(len(arg423))
-    defer mbTrans424.Close()
-    _, err425 := mbTrans424.WriteString(arg423)
-    if err425 != nil {
-      Usage()
-      return
-    }
-    factory426 := thrift.NewTJSONProtocolFactory()
-    jsProt427 := factory426.GetProtocol(mbTrans424)
-    argvalue0 := hive_metastore.NewPrivilegeBag()
-    err428 := argvalue0.Read(jsProt427)
-    if err428 != nil {
-      Usage()
-      return
-    }
-    value0 := argvalue0
-    fmt.Print(client.GrantPrivileges(context.Background(), value0))
-    fmt.Print("\n")
-    break
-  case "revoke_privileges":
-    if flag.NArg() - 1 != 1 {
-      fmt.Fprintln(os.Stderr, "RevokePrivileges requires 1 args")
-      flag.Usage()
-    }
-    arg429 := flag.Arg(1)
-    mbTrans430 := thrift.NewTMemoryBufferLen(len(arg429))
-    defer mbTrans430.Close()
-    _, err431 := mbTrans430.WriteString(arg429)
-    if err431 != nil {
-      Usage()
-      return
-    }
-    factory432 := thrift.NewTJSONProtocolFactory()
-    jsProt433 := factory432.GetProtocol(mbTrans430)
-    argvalue0 := hive_metastore.NewPrivilegeBag()
-    err434 := argvalue0.Read(jsProt433)
-    if err434 != nil {
-      Usage()
-      return
-    }
-    value0 := argvalue0
-    fmt.Print(client.RevokePrivileges(context.Background(), value0))
-    fmt.Print("\n")
-    break
-  case "get_delegation_token":
-    if flag.NArg() - 1 != 1 {
-      fmt.Fprintln(os.Stderr, "GetDelegationToken requires 1 args")
-      flag.Usage()
-    }
-    argvalue0 := flag.Arg(1)
-    value0 := argvalue0
-    fmt.Print(client.GetDelegationToken(context.Background(), value0))
-    fmt.Print("\n")
-    break
-  case "get_delegation_token_with_signature":
-    if flag.NArg() - 1 != 2 {
-      fmt.Fprintln(os.Stderr, "GetDelegationTokenWithSignature requires 2 args")
-      flag.Usage()
-    }
-    argvalue0 := flag.Arg(1)
-    value0 := argvalue0
-    argvalue1 := flag.Arg(2)
-    value1 := argvalue1
-    fmt.Print(client.GetDelegationTokenWithSignature(context.Background(), value0, value1))
-    fmt.Print("\n")
-    break
-  case "renew_delegation_token":
-    if flag.NArg() - 1 != 1 {
-      fmt.Fprintln(os.Stderr, "RenewDelegationToken requires 1 args")
-      flag.Usage()
-    }
-    argvalue0 := flag.Arg(1)
-    value0 := argvalue0
-    fmt.Print(client.RenewDelegationToken(context.Background(), value0))
-    fmt.Print("\n")
-    break
-  case "cancel_delegation_token":
-    if flag.NArg() - 1 != 1 {
-      fmt.Fprintln(os.Stderr, "CancelDelegationToken requires 1 args")
-      flag.Usage()
-    }
-    argvalue0 := flag.Arg(1)
-    value0 := argvalue0
-    fmt.Print(client.CancelDelegationToken(context.Background(), value0))
-    fmt.Print("\n")
-    break
-  case "getName":
-    if flag.NArg() - 1 != 0 {
-      fmt.Fprintln(os.Stderr, "GetName requires 0 args")
-      flag.Usage()
-    }
-    fmt.Print(client.GetName(context.Background()))
-    fmt.Print("\n")
-    break
-  case "getVersion":
-    if flag.NArg() - 1 != 0 {
-      fmt.Fprintln(os.Stderr, "GetVersion requires 0 args")
-      flag.Usage()
-    }
-    fmt.Print(client.GetVersion(context.Background()))
-    fmt.Print("\n")
-    break
-  case "getStatus":
-    if flag.NArg() - 1 != 0 {
-      fmt.Fprintln(os.Stderr, "GetStatus requires 0 args")
-      flag.Usage()
-    }
-    fmt.Print(client.GetStatus(context.Background()))
-    fmt.Print("\n")
-    break
-  case "getStatusDetails":
-    if flag.NArg() - 1 != 0 {
-      fmt.Fprintln(os.Stderr, "GetStatusDetails requires 0 args")
-      flag.Usage()
-    }
-    fmt.Print(client.GetStatusDetails(context.Background()))
-    fmt.Print("\n")
-    break
-  case "getCounters":
-    if flag.NArg() - 1 != 0 {
-      fmt.Fprintln(os.Stderr, "GetCounters requires 0 args")
-      flag.Usage()
-    }
-    fmt.Print(client.GetCounters(context.Background()))
-    fmt.Print("\n")
-    break
-  case "getCounter":
-    if flag.NArg() - 1 != 1 {
-      fmt.Fprintln(os.Stderr, "GetCounter requires 1 args")
-      flag.Usage()
-    }
-    argvalue0 := flag.Arg(1)
-    value0 := argvalue0
-    fmt.Print(client.GetCounter(context.Background(), value0))
-    fmt.Print("\n")
-    break
-  case "setOption":
-    if flag.NArg() - 1 != 2 {
-      fmt.Fprintln(os.Stderr, "SetOption requires 2 args")
-      flag.Usage()
-    }
-    argvalue0 := flag.Arg(1)
-    value0 := argvalue0
-    argvalue1 := flag.Arg(2)
-    value1 := argvalue1
-    fmt.Print(client.SetOption(context.Background(), value0, value1))
-    fmt.Print("\n")
-    break
-  case "getOption":
-    if flag.NArg() - 1 != 1 {
-      fmt.Fprintln(os.Stderr, "GetOption requires 1 args")
-      flag.Usage()
-    }
-    argvalue0 := flag.Arg(1)
-    value0 := argvalue0
-    fmt.Print(client.GetOption(context.Background(), value0))
-    fmt.Print("\n")
-    break
-  case "getOptions":
-    if flag.NArg() - 1 != 0 {
-      fmt.Fprintln(os.Stderr, "GetOptions requires 0 args")
-      flag.Usage()
-    }
-    fmt.Print(client.GetOptions(context.Background()))
-    fmt.Print("\n")
-    break
-  case "getCpuProfile":
-    if flag.NArg() - 1 != 1 {
-      fmt.Fprintln(os.Stderr, "GetCpuProfile requires 1 args")
-      flag.Usage()
-    }
-    tmp0, err444 := (strconv.Atoi(flag.Arg(1)))
-    if err444 != nil {
-      Usage()
-      return
-    }
-    argvalue0 := int32(tmp0)
-    value0 := argvalue0
-    fmt.Print(client.GetCpuProfile(context.Background(), value0))
-    fmt.Print("\n")
-    break
-  case "aliveSince":
-    if flag.NArg() - 1 != 0 {
-      fmt.Fprintln(os.Stderr, "AliveSince requires 0 args")
-      flag.Usage()
-    }
-    fmt.Print(client.AliveSince(context.Background()))
-    fmt.Print("\n")
-    break
-  case "reinitialize":
-    if flag.NArg() - 1 != 0 {
-      fmt.Fprintln(os.Stderr, "Reinitialize requires 0 args")
-      flag.Usage()
-    }
-    fmt.Print(client.Reinitialize(context.Background()))
-    fmt.Print("\n")
-    break
-  case "shutdown":
-    if flag.NArg() - 1 != 0 {
-      fmt.Fprintln(os.Stderr, "Shutdown requires 0 args")
-      flag.Usage()
-    }
-    fmt.Print(client.Shutdown(context.Background()))
-    fmt.Print("\n")
-    break
-  case "":
-    Usage()
-    break
-  default:
-    fmt.Fprintln(os.Stderr, "Invalid function ", cmd)
-  }
+	flag.Usage = Usage
+	var host string
+	var port int
+	var protocol string
+	var urlString string
+	var framed bool
+	var useHttp bool
+	headers := make(httpHeaders)
+	var parsedUrl *url.URL
+	var trans thrift.TTransport
+	_ = strconv.Atoi
+	_ = math.Abs
+	flag.Usage = Usage
+	flag.StringVar(&host, "h", "localhost", "Specify host and port")
+	flag.IntVar(&port, "p", 9090, "Specify port")
+	flag.StringVar(&protocol, "P", "binary", "Specify the protocol (binary, compact, simplejson, json)")
+	flag.StringVar(&urlString, "u", "", "Specify the url")
+	flag.BoolVar(&framed, "framed", false, "Use framed transport")
+	flag.BoolVar(&useHttp, "http", false, "Use http")
+	flag.Var(headers, "H", "Headers to set on the http(s) request (e.g. -H \"Key: Value\")")
+	flag.Parse()
+
+	if len(urlString) > 0 {
+		var err error
+		parsedUrl, err = url.Parse(urlString)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "Error parsing URL: ", err)
+			flag.Usage()
+		}
+		host = parsedUrl.Host
+		useHttp = len(parsedUrl.Scheme) <= 0 || parsedUrl.Scheme == "http" || parsedUrl.Scheme == "https"
+	} else if useHttp {
+		_, err := url.Parse(fmt.Sprint("http://", host, ":", port))
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "Error parsing URL: ", err)
+			flag.Usage()
+		}
+	}
+
+	cmd := flag.Arg(0)
+	var err error
+	if useHttp {
+		trans, err = thrift.NewTHttpClient(parsedUrl.String())
+		if len(headers) > 0 {
+			httptrans := trans.(*thrift.THttpClient)
+			for key, value := range headers {
+				httptrans.SetHeader(key, value)
+			}
+		}
+	} else {
+		portStr := fmt.Sprint(port)
+		if strings.Contains(host, ":") {
+			host, portStr, err = net.SplitHostPort(host)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "error with host:", err)
+				os.Exit(1)
+			}
+		}
+		trans, err = thrift.NewTSocket(net.JoinHostPort(host, portStr))
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "error resolving address:", err)
+			os.Exit(1)
+		}
+		if framed {
+			trans = thrift.NewTFramedTransport(trans)
+		}
+	}
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Error creating transport", err)
+		os.Exit(1)
+	}
+	defer trans.Close()
+	var protocolFactory thrift.TProtocolFactory
+	switch protocol {
+	case "compact":
+		protocolFactory = thrift.NewTCompactProtocolFactory()
+		break
+	case "simplejson":
+		protocolFactory = thrift.NewTSimpleJSONProtocolFactory()
+		break
+	case "json":
+		protocolFactory = thrift.NewTJSONProtocolFactory()
+		break
+	case "binary", "":
+		protocolFactory = thrift.NewTBinaryProtocolFactoryDefault()
+		break
+	default:
+		fmt.Fprintln(os.Stderr, "Invalid protocol specified: ", protocol)
+		Usage()
+		os.Exit(1)
+	}
+	iprot := protocolFactory.GetProtocol(trans)
+	oprot := protocolFactory.GetProtocol(trans)
+	client := hive_metastore.NewThriftHiveMetastoreClient(thrift.NewTStandardClient(iprot, oprot))
+	if err := trans.Open(); err != nil {
+		fmt.Fprintln(os.Stderr, "Error opening socket to ", host, ":", port, " ", err)
+		os.Exit(1)
+	}
+
+	switch cmd {
+	case "create_database":
+		if flag.NArg()-1 != 1 {
+			fmt.Fprintln(os.Stderr, "CreateDatabase requires 1 args")
+			flag.Usage()
+		}
+		arg181 := flag.Arg(1)
+		mbTrans182 := thrift.NewTMemoryBufferLen(len(arg181))
+		defer mbTrans182.Close()
+		_, err183 := mbTrans182.WriteString(arg181)
+		if err183 != nil {
+			Usage()
+			return
+		}
+		factory184 := thrift.NewTJSONProtocolFactory()
+		jsProt185 := factory184.GetProtocol(mbTrans182)
+		argvalue0 := hive_metastore.NewDatabase()
+		err186 := argvalue0.Read(jsProt185)
+		if err186 != nil {
+			Usage()
+			return
+		}
+		value0 := argvalue0
+		fmt.Print(client.CreateDatabase(context.Background(), value0))
+		fmt.Print("\n")
+		break
+	case "get_database":
+		if flag.NArg()-1 != 1 {
+			fmt.Fprintln(os.Stderr, "GetDatabase requires 1 args")
+			flag.Usage()
+		}
+		argvalue0 := flag.Arg(1)
+		value0 := argvalue0
+		fmt.Print(client.GetDatabase(context.Background(), value0))
+		fmt.Print("\n")
+		break
+	case "drop_database":
+		if flag.NArg()-1 != 2 {
+			fmt.Fprintln(os.Stderr, "DropDatabase requires 2 args")
+			flag.Usage()
+		}
+		argvalue0 := flag.Arg(1)
+		value0 := argvalue0
+		argvalue1 := flag.Arg(2) == "true"
+		value1 := argvalue1
+		fmt.Print(client.DropDatabase(context.Background(), value0, value1))
+		fmt.Print("\n")
+		break
+	case "get_databases":
+		if flag.NArg()-1 != 1 {
+			fmt.Fprintln(os.Stderr, "GetDatabases requires 1 args")
+			flag.Usage()
+		}
+		argvalue0 := flag.Arg(1)
+		value0 := argvalue0
+		fmt.Print(client.GetDatabases(context.Background(), value0))
+		fmt.Print("\n")
+		break
+	case "get_all_databases":
+		if flag.NArg()-1 != 0 {
+			fmt.Fprintln(os.Stderr, "GetAllDatabases requires 0 args")
+			flag.Usage()
+		}
+		fmt.Print(client.GetAllDatabases(context.Background()))
+		fmt.Print("\n")
+		break
+	case "alter_database":
+		if flag.NArg()-1 != 2 {
+			fmt.Fprintln(os.Stderr, "AlterDatabase requires 2 args")
+			flag.Usage()
+		}
+		argvalue0 := flag.Arg(1)
+		value0 := argvalue0
+		arg192 := flag.Arg(2)
+		mbTrans193 := thrift.NewTMemoryBufferLen(len(arg192))
+		defer mbTrans193.Close()
+		_, err194 := mbTrans193.WriteString(arg192)
+		if err194 != nil {
+			Usage()
+			return
+		}
+		factory195 := thrift.NewTJSONProtocolFactory()
+		jsProt196 := factory195.GetProtocol(mbTrans193)
+		argvalue1 := hive_metastore.NewDatabase()
+		err197 := argvalue1.Read(jsProt196)
+		if err197 != nil {
+			Usage()
+			return
+		}
+		value1 := argvalue1
+		fmt.Print(client.AlterDatabase(context.Background(), value0, value1))
+		fmt.Print("\n")
+		break
+	case "get_type":
+		if flag.NArg()-1 != 1 {
+			fmt.Fprintln(os.Stderr, "GetType requires 1 args")
+			flag.Usage()
+		}
+		argvalue0 := flag.Arg(1)
+		value0 := argvalue0
+		fmt.Print(client.GetType(context.Background(), value0))
+		fmt.Print("\n")
+		break
+	case "create_type":
+		if flag.NArg()-1 != 1 {
+			fmt.Fprintln(os.Stderr, "CreateType requires 1 args")
+			flag.Usage()
+		}
+		arg199 := flag.Arg(1)
+		mbTrans200 := thrift.NewTMemoryBufferLen(len(arg199))
+		defer mbTrans200.Close()
+		_, err201 := mbTrans200.WriteString(arg199)
+		if err201 != nil {
+			Usage()
+			return
+		}
+		factory202 := thrift.NewTJSONProtocolFactory()
+		jsProt203 := factory202.GetProtocol(mbTrans200)
+		argvalue0 := hive_metastore.NewType()
+		err204 := argvalue0.Read(jsProt203)
+		if err204 != nil {
+			Usage()
+			return
+		}
+		value0 := argvalue0
+		fmt.Print(client.CreateType(context.Background(), value0))
+		fmt.Print("\n")
+		break
+	case "drop_type":
+		if flag.NArg()-1 != 1 {
+			fmt.Fprintln(os.Stderr, "DropType requires 1 args")
+			flag.Usage()
+		}
+		argvalue0 := flag.Arg(1)
+		value0 := argvalue0
+		fmt.Print(client.DropType(context.Background(), value0))
+		fmt.Print("\n")
+		break
+	case "get_type_all":
+		if flag.NArg()-1 != 1 {
+			fmt.Fprintln(os.Stderr, "GetTypeAll requires 1 args")
+			flag.Usage()
+		}
+		argvalue0 := flag.Arg(1)
+		value0 := argvalue0
+		fmt.Print(client.GetTypeAll(context.Background(), value0))
+		fmt.Print("\n")
+		break
+	case "get_fields":
+		if flag.NArg()-1 != 2 {
+			fmt.Fprintln(os.Stderr, "GetFields requires 2 args")
+			flag.Usage()
+		}
+		argvalue0 := flag.Arg(1)
+		value0 := argvalue0
+		argvalue1 := flag.Arg(2)
+		value1 := argvalue1
+		fmt.Print(client.GetFields(context.Background(), value0, value1))
+		fmt.Print("\n")
+		break
+	case "get_schema":
+		if flag.NArg()-1 != 2 {
+			fmt.Fprintln(os.Stderr, "GetSchema requires 2 args")
+			flag.Usage()
+		}
+		argvalue0 := flag.Arg(1)
+		value0 := argvalue0
+		argvalue1 := flag.Arg(2)
+		value1 := argvalue1
+		fmt.Print(client.GetSchema(context.Background(), value0, value1))
+		fmt.Print("\n")
+		break
+	case "create_table":
+		if flag.NArg()-1 != 1 {
+			fmt.Fprintln(os.Stderr, "CreateTable requires 1 args")
+			flag.Usage()
+		}
+		arg211 := flag.Arg(1)
+		mbTrans212 := thrift.NewTMemoryBufferLen(len(arg211))
+		defer mbTrans212.Close()
+		_, err213 := mbTrans212.WriteString(arg211)
+		if err213 != nil {
+			Usage()
+			return
+		}
+		factory214 := thrift.NewTJSONProtocolFactory()
+		jsProt215 := factory214.GetProtocol(mbTrans212)
+		argvalue0 := hive_metastore.NewTable()
+		err216 := argvalue0.Read(jsProt215)
+		if err216 != nil {
+			Usage()
+			return
+		}
+		value0 := argvalue0
+		fmt.Print(client.CreateTable(context.Background(), value0))
+		fmt.Print("\n")
+		break
+	case "drop_table":
+		if flag.NArg()-1 != 3 {
+			fmt.Fprintln(os.Stderr, "DropTable requires 3 args")
+			flag.Usage()
+		}
+		argvalue0 := flag.Arg(1)
+		value0 := argvalue0
+		argvalue1 := flag.Arg(2)
+		value1 := argvalue1
+		argvalue2 := flag.Arg(3) == "true"
+		value2 := argvalue2
+		fmt.Print(client.DropTable(context.Background(), value0, value1, value2))
+		fmt.Print("\n")
+		break
+	case "get_tables":
+		if flag.NArg()-1 != 2 {
+			fmt.Fprintln(os.Stderr, "GetTables requires 2 args")
+			flag.Usage()
+		}
+		argvalue0 := flag.Arg(1)
+		value0 := argvalue0
+		argvalue1 := flag.Arg(2)
+		value1 := argvalue1
+		fmt.Print(client.GetTables(context.Background(), value0, value1))
+		fmt.Print("\n")
+		break
+	case "get_all_tables":
+		if flag.NArg()-1 != 1 {
+			fmt.Fprintln(os.Stderr, "GetAllTables requires 1 args")
+			flag.Usage()
+		}
+		argvalue0 := flag.Arg(1)
+		value0 := argvalue0
+		fmt.Print(client.GetAllTables(context.Background(), value0))
+		fmt.Print("\n")
+		break
+	case "get_table":
+		if flag.NArg()-1 != 2 {
+			fmt.Fprintln(os.Stderr, "GetTable requires 2 args")
+			flag.Usage()
+		}
+		argvalue0 := flag.Arg(1)
+		value0 := argvalue0
+		argvalue1 := flag.Arg(2)
+		value1 := argvalue1
+		fmt.Print(client.GetTable(context.Background(), value0, value1))
+		fmt.Print("\n")
+		break
+	case "alter_table":
+		if flag.NArg()-1 != 3 {
+			fmt.Fprintln(os.Stderr, "AlterTable requires 3 args")
+			flag.Usage()
+		}
+		argvalue0 := flag.Arg(1)
+		value0 := argvalue0
+		argvalue1 := flag.Arg(2)
+		value1 := argvalue1
+		arg227 := flag.Arg(3)
+		mbTrans228 := thrift.NewTMemoryBufferLen(len(arg227))
+		defer mbTrans228.Close()
+		_, err229 := mbTrans228.WriteString(arg227)
+		if err229 != nil {
+			Usage()
+			return
+		}
+		factory230 := thrift.NewTJSONProtocolFactory()
+		jsProt231 := factory230.GetProtocol(mbTrans228)
+		argvalue2 := hive_metastore.NewTable()
+		err232 := argvalue2.Read(jsProt231)
+		if err232 != nil {
+			Usage()
+			return
+		}
+		value2 := argvalue2
+		fmt.Print(client.AlterTable(context.Background(), value0, value1, value2))
+		fmt.Print("\n")
+		break
+	case "add_partition":
+		if flag.NArg()-1 != 1 {
+			fmt.Fprintln(os.Stderr, "AddPartition requires 1 args")
+			flag.Usage()
+		}
+		arg233 := flag.Arg(1)
+		mbTrans234 := thrift.NewTMemoryBufferLen(len(arg233))
+		defer mbTrans234.Close()
+		_, err235 := mbTrans234.WriteString(arg233)
+		if err235 != nil {
+			Usage()
+			return
+		}
+		factory236 := thrift.NewTJSONProtocolFactory()
+		jsProt237 := factory236.GetProtocol(mbTrans234)
+		argvalue0 := hive_metastore.NewPartition()
+		err238 := argvalue0.Read(jsProt237)
+		if err238 != nil {
+			Usage()
+			return
+		}
+		value0 := argvalue0
+		fmt.Print(client.AddPartition(context.Background(), value0))
+		fmt.Print("\n")
+		break
+	case "append_partition":
+		if flag.NArg()-1 != 3 {
+			fmt.Fprintln(os.Stderr, "AppendPartition requires 3 args")
+			flag.Usage()
+		}
+		argvalue0 := flag.Arg(1)
+		value0 := argvalue0
+		argvalue1 := flag.Arg(2)
+		value1 := argvalue1
+		arg241 := flag.Arg(3)
+		mbTrans242 := thrift.NewTMemoryBufferLen(len(arg241))
+		defer mbTrans242.Close()
+		_, err243 := mbTrans242.WriteString(arg241)
+		if err243 != nil {
+			Usage()
+			return
+		}
+		factory244 := thrift.NewTJSONProtocolFactory()
+		jsProt245 := factory244.GetProtocol(mbTrans242)
+		containerStruct2 := hive_metastore.NewThriftHiveMetastoreAppendPartitionArgs()
+		err246 := containerStruct2.ReadField3(jsProt245)
+		if err246 != nil {
+			Usage()
+			return
+		}
+		argvalue2 := containerStruct2.PartVals
+		value2 := argvalue2
+		fmt.Print(client.AppendPartition(context.Background(), value0, value1, value2))
+		fmt.Print("\n")
+		break
+	case "append_partition_by_name":
+		if flag.NArg()-1 != 3 {
+			fmt.Fprintln(os.Stderr, "AppendPartitionByName requires 3 args")
+			flag.Usage()
+		}
+		argvalue0 := flag.Arg(1)
+		value0 := argvalue0
+		argvalue1 := flag.Arg(2)
+		value1 := argvalue1
+		argvalue2 := flag.Arg(3)
+		value2 := argvalue2
+		fmt.Print(client.AppendPartitionByName(context.Background(), value0, value1, value2))
+		fmt.Print("\n")
+		break
+	case "drop_partition":
+		if flag.NArg()-1 != 4 {
+			fmt.Fprintln(os.Stderr, "DropPartition requires 4 args")
+			flag.Usage()
+		}
+		argvalue0 := flag.Arg(1)
+		value0 := argvalue0
+		argvalue1 := flag.Arg(2)
+		value1 := argvalue1
+		arg252 := flag.Arg(3)
+		mbTrans253 := thrift.NewTMemoryBufferLen(len(arg252))
+		defer mbTrans253.Close()
+		_, err254 := mbTrans253.WriteString(arg252)
+		if err254 != nil {
+			Usage()
+			return
+		}
+		factory255 := thrift.NewTJSONProtocolFactory()
+		jsProt256 := factory255.GetProtocol(mbTrans253)
+		containerStruct2 := hive_metastore.NewThriftHiveMetastoreDropPartitionArgs()
+		err257 := containerStruct2.ReadField3(jsProt256)
+		if err257 != nil {
+			Usage()
+			return
+		}
+		argvalue2 := containerStruct2.PartVals
+		value2 := argvalue2
+		argvalue3 := flag.Arg(4) == "true"
+		value3 := argvalue3
+		fmt.Print(client.DropPartition(context.Background(), value0, value1, value2, value3))
+		fmt.Print("\n")
+		break
+	case "drop_partition_by_name":
+		if flag.NArg()-1 != 4 {
+			fmt.Fprintln(os.Stderr, "DropPartitionByName requires 4 args")
+			flag.Usage()
+		}
+		argvalue0 := flag.Arg(1)
+		value0 := argvalue0
+		argvalue1 := flag.Arg(2)
+		value1 := argvalue1
+		argvalue2 := flag.Arg(3)
+		value2 := argvalue2
+		argvalue3 := flag.Arg(4) == "true"
+		value3 := argvalue3
+		fmt.Print(client.DropPartitionByName(context.Background(), value0, value1, value2, value3))
+		fmt.Print("\n")
+		break
+	case "get_partition":
+		if flag.NArg()-1 != 3 {
+			fmt.Fprintln(os.Stderr, "GetPartition requires 3 args")
+			flag.Usage()
+		}
+		argvalue0 := flag.Arg(1)
+		value0 := argvalue0
+		argvalue1 := flag.Arg(2)
+		value1 := argvalue1
+		arg265 := flag.Arg(3)
+		mbTrans266 := thrift.NewTMemoryBufferLen(len(arg265))
+		defer mbTrans266.Close()
+		_, err267 := mbTrans266.WriteString(arg265)
+		if err267 != nil {
+			Usage()
+			return
+		}
+		factory268 := thrift.NewTJSONProtocolFactory()
+		jsProt269 := factory268.GetProtocol(mbTrans266)
+		containerStruct2 := hive_metastore.NewThriftHiveMetastoreGetPartitionArgs()
+		err270 := containerStruct2.ReadField3(jsProt269)
+		if err270 != nil {
+			Usage()
+			return
+		}
+		argvalue2 := containerStruct2.PartVals
+		value2 := argvalue2
+		fmt.Print(client.GetPartition(context.Background(), value0, value1, value2))
+		fmt.Print("\n")
+		break
+	case "get_partition_with_auth":
+		if flag.NArg()-1 != 5 {
+			fmt.Fprintln(os.Stderr, "GetPartitionWithAuth requires 5 args")
+			flag.Usage()
+		}
+		argvalue0 := flag.Arg(1)
+		value0 := argvalue0
+		argvalue1 := flag.Arg(2)
+		value1 := argvalue1
+		arg273 := flag.Arg(3)
+		mbTrans274 := thrift.NewTMemoryBufferLen(len(arg273))
+		defer mbTrans274.Close()
+		_, err275 := mbTrans274.WriteString(arg273)
+		if err275 != nil {
+			Usage()
+			return
+		}
+		factory276 := thrift.NewTJSONProtocolFactory()
+		jsProt277 := factory276.GetProtocol(mbTrans274)
+		containerStruct2 := hive_metastore.NewThriftHiveMetastoreGetPartitionWithAuthArgs()
+		err278 := containerStruct2.ReadField3(jsProt277)
+		if err278 != nil {
+			Usage()
+			return
+		}
+		argvalue2 := containerStruct2.PartVals
+		value2 := argvalue2
+		argvalue3 := flag.Arg(4)
+		value3 := argvalue3
+		arg280 := flag.Arg(5)
+		mbTrans281 := thrift.NewTMemoryBufferLen(len(arg280))
+		defer mbTrans281.Close()
+		_, err282 := mbTrans281.WriteString(arg280)
+		if err282 != nil {
+			Usage()
+			return
+		}
+		factory283 := thrift.NewTJSONProtocolFactory()
+		jsProt284 := factory283.GetProtocol(mbTrans281)
+		containerStruct4 := hive_metastore.NewThriftHiveMetastoreGetPartitionWithAuthArgs()
+		err285 := containerStruct4.ReadField5(jsProt284)
+		if err285 != nil {
+			Usage()
+			return
+		}
+		argvalue4 := containerStruct4.GroupNames
+		value4 := argvalue4
+		fmt.Print(client.GetPartitionWithAuth(context.Background(), value0, value1, value2, value3, value4))
+		fmt.Print("\n")
+		break
+	case "get_partition_by_name":
+		if flag.NArg()-1 != 3 {
+			fmt.Fprintln(os.Stderr, "GetPartitionByName requires 3 args")
+			flag.Usage()
+		}
+		argvalue0 := flag.Arg(1)
+		value0 := argvalue0
+		argvalue1 := flag.Arg(2)
+		value1 := argvalue1
+		argvalue2 := flag.Arg(3)
+		value2 := argvalue2
+		fmt.Print(client.GetPartitionByName(context.Background(), value0, value1, value2))
+		fmt.Print("\n")
+		break
+	case "get_partitions":
+		if flag.NArg()-1 != 3 {
+			fmt.Fprintln(os.Stderr, "GetPartitions requires 3 args")
+			flag.Usage()
+		}
+		argvalue0 := flag.Arg(1)
+		value0 := argvalue0
+		argvalue1 := flag.Arg(2)
+		value1 := argvalue1
+		tmp2, err291 := (strconv.Atoi(flag.Arg(3)))
+		if err291 != nil {
+			Usage()
+			return
+		}
+		argvalue2 := int16(tmp2)
+		value2 := argvalue2
+		fmt.Print(client.GetPartitions(context.Background(), value0, value1, value2))
+		fmt.Print("\n")
+		break
+	case "get_partitions_with_auth":
+		if flag.NArg()-1 != 5 {
+			fmt.Fprintln(os.Stderr, "GetPartitionsWithAuth requires 5 args")
+			flag.Usage()
+		}
+		argvalue0 := flag.Arg(1)
+		value0 := argvalue0
+		argvalue1 := flag.Arg(2)
+		value1 := argvalue1
+		tmp2, err294 := (strconv.Atoi(flag.Arg(3)))
+		if err294 != nil {
+			Usage()
+			return
+		}
+		argvalue2 := int16(tmp2)
+		value2 := argvalue2
+		argvalue3 := flag.Arg(4)
+		value3 := argvalue3
+		arg296 := flag.Arg(5)
+		mbTrans297 := thrift.NewTMemoryBufferLen(len(arg296))
+		defer mbTrans297.Close()
+		_, err298 := mbTrans297.WriteString(arg296)
+		if err298 != nil {
+			Usage()
+			return
+		}
+		factory299 := thrift.NewTJSONProtocolFactory()
+		jsProt300 := factory299.GetProtocol(mbTrans297)
+		containerStruct4 := hive_metastore.NewThriftHiveMetastoreGetPartitionsWithAuthArgs()
+		err301 := containerStruct4.ReadField5(jsProt300)
+		if err301 != nil {
+			Usage()
+			return
+		}
+		argvalue4 := containerStruct4.GroupNames
+		value4 := argvalue4
+		fmt.Print(client.GetPartitionsWithAuth(context.Background(), value0, value1, value2, value3, value4))
+		fmt.Print("\n")
+		break
+	case "get_partition_names":
+		if flag.NArg()-1 != 3 {
+			fmt.Fprintln(os.Stderr, "GetPartitionNames requires 3 args")
+			flag.Usage()
+		}
+		argvalue0 := flag.Arg(1)
+		value0 := argvalue0
+		argvalue1 := flag.Arg(2)
+		value1 := argvalue1
+		tmp2, err304 := (strconv.Atoi(flag.Arg(3)))
+		if err304 != nil {
+			Usage()
+			return
+		}
+		argvalue2 := int16(tmp2)
+		value2 := argvalue2
+		fmt.Print(client.GetPartitionNames(context.Background(), value0, value1, value2))
+		fmt.Print("\n")
+		break
+	case "get_partitions_ps":
+		if flag.NArg()-1 != 4 {
+			fmt.Fprintln(os.Stderr, "GetPartitionsPs requires 4 args")
+			flag.Usage()
+		}
+		argvalue0 := flag.Arg(1)
+		value0 := argvalue0
+		argvalue1 := flag.Arg(2)
+		value1 := argvalue1
+		arg307 := flag.Arg(3)
+		mbTrans308 := thrift.NewTMemoryBufferLen(len(arg307))
+		defer mbTrans308.Close()
+		_, err309 := mbTrans308.WriteString(arg307)
+		if err309 != nil {
+			Usage()
+			return
+		}
+		factory310 := thrift.NewTJSONProtocolFactory()
+		jsProt311 := factory310.GetProtocol(mbTrans308)
+		containerStruct2 := hive_metastore.NewThriftHiveMetastoreGetPartitionsPsArgs()
+		err312 := containerStruct2.ReadField3(jsProt311)
+		if err312 != nil {
+			Usage()
+			return
+		}
+		argvalue2 := containerStruct2.PartVals
+		value2 := argvalue2
+		tmp3, err313 := (strconv.Atoi(flag.Arg(4)))
+		if err313 != nil {
+			Usage()
+			return
+		}
+		argvalue3 := int16(tmp3)
+		value3 := argvalue3
+		fmt.Print(client.GetPartitionsPs(context.Background(), value0, value1, value2, value3))
+		fmt.Print("\n")
+		break
+	case "get_partitions_ps_with_auth":
+		if flag.NArg()-1 != 6 {
+			fmt.Fprintln(os.Stderr, "GetPartitionsPsWithAuth requires 6 args")
+			flag.Usage()
+		}
+		argvalue0 := flag.Arg(1)
+		value0 := argvalue0
+		argvalue1 := flag.Arg(2)
+		value1 := argvalue1
+		arg316 := flag.Arg(3)
+		mbTrans317 := thrift.NewTMemoryBufferLen(len(arg316))
+		defer mbTrans317.Close()
+		_, err318 := mbTrans317.WriteString(arg316)
+		if err318 != nil {
+			Usage()
+			return
+		}
+		factory319 := thrift.NewTJSONProtocolFactory()
+		jsProt320 := factory319.GetProtocol(mbTrans317)
+		containerStruct2 := hive_metastore.NewThriftHiveMetastoreGetPartitionsPsWithAuthArgs()
+		err321 := containerStruct2.ReadField3(jsProt320)
+		if err321 != nil {
+			Usage()
+			return
+		}
+		argvalue2 := containerStruct2.PartVals
+		value2 := argvalue2
+		tmp3, err322 := (strconv.Atoi(flag.Arg(4)))
+		if err322 != nil {
+			Usage()
+			return
+		}
+		argvalue3 := int16(tmp3)
+		value3 := argvalue3
+		argvalue4 := flag.Arg(5)
+		value4 := argvalue4
+		arg324 := flag.Arg(6)
+		mbTrans325 := thrift.NewTMemoryBufferLen(len(arg324))
+		defer mbTrans325.Close()
+		_, err326 := mbTrans325.WriteString(arg324)
+		if err326 != nil {
+			Usage()
+			return
+		}
+		factory327 := thrift.NewTJSONProtocolFactory()
+		jsProt328 := factory327.GetProtocol(mbTrans325)
+		containerStruct5 := hive_metastore.NewThriftHiveMetastoreGetPartitionsPsWithAuthArgs()
+		err329 := containerStruct5.ReadField6(jsProt328)
+		if err329 != nil {
+			Usage()
+			return
+		}
+		argvalue5 := containerStruct5.GroupNames
+		value5 := argvalue5
+		fmt.Print(client.GetPartitionsPsWithAuth(context.Background(), value0, value1, value2, value3, value4, value5))
+		fmt.Print("\n")
+		break
+	case "get_partition_names_ps":
+		if flag.NArg()-1 != 4 {
+			fmt.Fprintln(os.Stderr, "GetPartitionNamesPs requires 4 args")
+			flag.Usage()
+		}
+		argvalue0 := flag.Arg(1)
+		value0 := argvalue0
+		argvalue1 := flag.Arg(2)
+		value1 := argvalue1
+		arg332 := flag.Arg(3)
+		mbTrans333 := thrift.NewTMemoryBufferLen(len(arg332))
+		defer mbTrans333.Close()
+		_, err334 := mbTrans333.WriteString(arg332)
+		if err334 != nil {
+			Usage()
+			return
+		}
+		factory335 := thrift.NewTJSONProtocolFactory()
+		jsProt336 := factory335.GetProtocol(mbTrans333)
+		containerStruct2 := hive_metastore.NewThriftHiveMetastoreGetPartitionNamesPsArgs()
+		err337 := containerStruct2.ReadField3(jsProt336)
+		if err337 != nil {
+			Usage()
+			return
+		}
+		argvalue2 := containerStruct2.PartVals
+		value2 := argvalue2
+		tmp3, err338 := (strconv.Atoi(flag.Arg(4)))
+		if err338 != nil {
+			Usage()
+			return
+		}
+		argvalue3 := int16(tmp3)
+		value3 := argvalue3
+		fmt.Print(client.GetPartitionNamesPs(context.Background(), value0, value1, value2, value3))
+		fmt.Print("\n")
+		break
+	case "get_partitions_by_filter":
+		if flag.NArg()-1 != 4 {
+			fmt.Fprintln(os.Stderr, "GetPartitionsByFilter requires 4 args")
+			flag.Usage()
+		}
+		argvalue0 := flag.Arg(1)
+		value0 := argvalue0
+		argvalue1 := flag.Arg(2)
+		value1 := argvalue1
+		argvalue2 := flag.Arg(3)
+		value2 := argvalue2
+		tmp3, err342 := (strconv.Atoi(flag.Arg(4)))
+		if err342 != nil {
+			Usage()
+			return
+		}
+		argvalue3 := int16(tmp3)
+		value3 := argvalue3
+		fmt.Print(client.GetPartitionsByFilter(context.Background(), value0, value1, value2, value3))
+		fmt.Print("\n")
+		break
+	case "alter_partition":
+		if flag.NArg()-1 != 3 {
+			fmt.Fprintln(os.Stderr, "AlterPartition requires 3 args")
+			flag.Usage()
+		}
+		argvalue0 := flag.Arg(1)
+		value0 := argvalue0
+		argvalue1 := flag.Arg(2)
+		value1 := argvalue1
+		arg345 := flag.Arg(3)
+		mbTrans346 := thrift.NewTMemoryBufferLen(len(arg345))
+		defer mbTrans346.Close()
+		_, err347 := mbTrans346.WriteString(arg345)
+		if err347 != nil {
+			Usage()
+			return
+		}
+		factory348 := thrift.NewTJSONProtocolFactory()
+		jsProt349 := factory348.GetProtocol(mbTrans346)
+		argvalue2 := hive_metastore.NewPartition()
+		err350 := argvalue2.Read(jsProt349)
+		if err350 != nil {
+			Usage()
+			return
+		}
+		value2 := argvalue2
+		fmt.Print(client.AlterPartition(context.Background(), value0, value1, value2))
+		fmt.Print("\n")
+		break
+	case "get_config_value":
+		if flag.NArg()-1 != 2 {
+			fmt.Fprintln(os.Stderr, "GetConfigValue requires 2 args")
+			flag.Usage()
+		}
+		argvalue0 := flag.Arg(1)
+		value0 := argvalue0
+		argvalue1 := flag.Arg(2)
+		value1 := argvalue1
+		fmt.Print(client.GetConfigValue(context.Background(), value0, value1))
+		fmt.Print("\n")
+		break
+	case "partition_name_to_vals":
+		if flag.NArg()-1 != 1 {
+			fmt.Fprintln(os.Stderr, "PartitionNameToVals requires 1 args")
+			flag.Usage()
+		}
+		argvalue0 := flag.Arg(1)
+		value0 := argvalue0
+		fmt.Print(client.PartitionNameToVals(context.Background(), value0))
+		fmt.Print("\n")
+		break
+	case "partition_name_to_spec":
+		if flag.NArg()-1 != 1 {
+			fmt.Fprintln(os.Stderr, "PartitionNameToSpec requires 1 args")
+			flag.Usage()
+		}
+		argvalue0 := flag.Arg(1)
+		value0 := argvalue0
+		fmt.Print(client.PartitionNameToSpec(context.Background(), value0))
+		fmt.Print("\n")
+		break
+	case "add_index":
+		if flag.NArg()-1 != 2 {
+			fmt.Fprintln(os.Stderr, "AddIndex requires 2 args")
+			flag.Usage()
+		}
+		arg355 := flag.Arg(1)
+		mbTrans356 := thrift.NewTMemoryBufferLen(len(arg355))
+		defer mbTrans356.Close()
+		_, err357 := mbTrans356.WriteString(arg355)
+		if err357 != nil {
+			Usage()
+			return
+		}
+		factory358 := thrift.NewTJSONProtocolFactory()
+		jsProt359 := factory358.GetProtocol(mbTrans356)
+		argvalue0 := hive_metastore.NewIndex()
+		err360 := argvalue0.Read(jsProt359)
+		if err360 != nil {
+			Usage()
+			return
+		}
+		value0 := argvalue0
+		arg361 := flag.Arg(2)
+		mbTrans362 := thrift.NewTMemoryBufferLen(len(arg361))
+		defer mbTrans362.Close()
+		_, err363 := mbTrans362.WriteString(arg361)
+		if err363 != nil {
+			Usage()
+			return
+		}
+		factory364 := thrift.NewTJSONProtocolFactory()
+		jsProt365 := factory364.GetProtocol(mbTrans362)
+		argvalue1 := hive_metastore.NewTable()
+		err366 := argvalue1.Read(jsProt365)
+		if err366 != nil {
+			Usage()
+			return
+		}
+		value1 := argvalue1
+		fmt.Print(client.AddIndex(context.Background(), value0, value1))
+		fmt.Print("\n")
+		break
+	case "alter_index":
+		if flag.NArg()-1 != 4 {
+			fmt.Fprintln(os.Stderr, "AlterIndex requires 4 args")
+			flag.Usage()
+		}
+		argvalue0 := flag.Arg(1)
+		value0 := argvalue0
+		argvalue1 := flag.Arg(2)
+		value1 := argvalue1
+		argvalue2 := flag.Arg(3)
+		value2 := argvalue2
+		arg370 := flag.Arg(4)
+		mbTrans371 := thrift.NewTMemoryBufferLen(len(arg370))
+		defer mbTrans371.Close()
+		_, err372 := mbTrans371.WriteString(arg370)
+		if err372 != nil {
+			Usage()
+			return
+		}
+		factory373 := thrift.NewTJSONProtocolFactory()
+		jsProt374 := factory373.GetProtocol(mbTrans371)
+		argvalue3 := hive_metastore.NewIndex()
+		err375 := argvalue3.Read(jsProt374)
+		if err375 != nil {
+			Usage()
+			return
+		}
+		value3 := argvalue3
+		fmt.Print(client.AlterIndex(context.Background(), value0, value1, value2, value3))
+		fmt.Print("\n")
+		break
+	case "drop_index_by_name":
+		if flag.NArg()-1 != 4 {
+			fmt.Fprintln(os.Stderr, "DropIndexByName requires 4 args")
+			flag.Usage()
+		}
+		argvalue0 := flag.Arg(1)
+		value0 := argvalue0
+		argvalue1 := flag.Arg(2)
+		value1 := argvalue1
+		argvalue2 := flag.Arg(3)
+		value2 := argvalue2
+		argvalue3 := flag.Arg(4) == "true"
+		value3 := argvalue3
+		fmt.Print(client.DropIndexByName(context.Background(), value0, value1, value2, value3))
+		fmt.Print("\n")
+		break
+	case "get_index_by_name":
+		if flag.NArg()-1 != 3 {
+			fmt.Fprintln(os.Stderr, "GetIndexByName requires 3 args")
+			flag.Usage()
+		}
+		argvalue0 := flag.Arg(1)
+		value0 := argvalue0
+		argvalue1 := flag.Arg(2)
+		value1 := argvalue1
+		argvalue2 := flag.Arg(3)
+		value2 := argvalue2
+		fmt.Print(client.GetIndexByName(context.Background(), value0, value1, value2))
+		fmt.Print("\n")
+		break
+	case "get_indexes":
+		if flag.NArg()-1 != 3 {
+			fmt.Fprintln(os.Stderr, "GetIndexes requires 3 args")
+			flag.Usage()
+		}
+		argvalue0 := flag.Arg(1)
+		value0 := argvalue0
+		argvalue1 := flag.Arg(2)
+		value1 := argvalue1
+		tmp2, err385 := (strconv.Atoi(flag.Arg(3)))
+		if err385 != nil {
+			Usage()
+			return
+		}
+		argvalue2 := int16(tmp2)
+		value2 := argvalue2
+		fmt.Print(client.GetIndexes(context.Background(), value0, value1, value2))
+		fmt.Print("\n")
+		break
+	case "get_index_names":
+		if flag.NArg()-1 != 3 {
+			fmt.Fprintln(os.Stderr, "GetIndexNames requires 3 args")
+			flag.Usage()
+		}
+		argvalue0 := flag.Arg(1)
+		value0 := argvalue0
+		argvalue1 := flag.Arg(2)
+		value1 := argvalue1
+		tmp2, err388 := (strconv.Atoi(flag.Arg(3)))
+		if err388 != nil {
+			Usage()
+			return
+		}
+		argvalue2 := int16(tmp2)
+		value2 := argvalue2
+		fmt.Print(client.GetIndexNames(context.Background(), value0, value1, value2))
+		fmt.Print("\n")
+		break
+	case "create_role":
+		if flag.NArg()-1 != 1 {
+			fmt.Fprintln(os.Stderr, "CreateRole requires 1 args")
+			flag.Usage()
+		}
+		arg389 := flag.Arg(1)
+		mbTrans390 := thrift.NewTMemoryBufferLen(len(arg389))
+		defer mbTrans390.Close()
+		_, err391 := mbTrans390.WriteString(arg389)
+		if err391 != nil {
+			Usage()
+			return
+		}
+		factory392 := thrift.NewTJSONProtocolFactory()
+		jsProt393 := factory392.GetProtocol(mbTrans390)
+		argvalue0 := hive_metastore.NewRole()
+		err394 := argvalue0.Read(jsProt393)
+		if err394 != nil {
+			Usage()
+			return
+		}
+		value0 := argvalue0
+		fmt.Print(client.CreateRole(context.Background(), value0))
+		fmt.Print("\n")
+		break
+	case "drop_role":
+		if flag.NArg()-1 != 1 {
+			fmt.Fprintln(os.Stderr, "DropRole requires 1 args")
+			flag.Usage()
+		}
+		argvalue0 := flag.Arg(1)
+		value0 := argvalue0
+		fmt.Print(client.DropRole(context.Background(), value0))
+		fmt.Print("\n")
+		break
+	case "get_role_names":
+		if flag.NArg()-1 != 0 {
+			fmt.Fprintln(os.Stderr, "GetRoleNames requires 0 args")
+			flag.Usage()
+		}
+		fmt.Print(client.GetRoleNames(context.Background()))
+		fmt.Print("\n")
+		break
+	case "grant_role":
+		if flag.NArg()-1 != 6 {
+			fmt.Fprintln(os.Stderr, "GrantRole requires 6 args")
+			flag.Usage()
+		}
+		argvalue0 := flag.Arg(1)
+		value0 := argvalue0
+		argvalue1 := flag.Arg(2)
+		value1 := argvalue1
+		tmp2, err := (strconv.Atoi(flag.Arg(3)))
+		if err != nil {
+			Usage()
+			return
+		}
+		argvalue2 := hive_metastore.PrincipalType(tmp2)
+		value2 := argvalue2
+		argvalue3 := flag.Arg(4)
+		value3 := argvalue3
+		tmp4, err := (strconv.Atoi(flag.Arg(5)))
+		if err != nil {
+			Usage()
+			return
+		}
+		argvalue4 := hive_metastore.PrincipalType(tmp4)
+		value4 := argvalue4
+		argvalue5 := flag.Arg(6) == "true"
+		value5 := argvalue5
+		fmt.Print(client.GrantRole(context.Background(), value0, value1, value2, value3, value4, value5))
+		fmt.Print("\n")
+		break
+	case "revoke_role":
+		if flag.NArg()-1 != 3 {
+			fmt.Fprintln(os.Stderr, "RevokeRole requires 3 args")
+			flag.Usage()
+		}
+		argvalue0 := flag.Arg(1)
+		value0 := argvalue0
+		argvalue1 := flag.Arg(2)
+		value1 := argvalue1
+		tmp2, err := (strconv.Atoi(flag.Arg(3)))
+		if err != nil {
+			Usage()
+			return
+		}
+		argvalue2 := hive_metastore.PrincipalType(tmp2)
+		value2 := argvalue2
+		fmt.Print(client.RevokeRole(context.Background(), value0, value1, value2))
+		fmt.Print("\n")
+		break
+	case "list_roles":
+		if flag.NArg()-1 != 2 {
+			fmt.Fprintln(os.Stderr, "ListRoles requires 2 args")
+			flag.Usage()
+		}
+		argvalue0 := flag.Arg(1)
+		value0 := argvalue0
+		tmp1, err := (strconv.Atoi(flag.Arg(2)))
+		if err != nil {
+			Usage()
+			return
+		}
+		argvalue1 := hive_metastore.PrincipalType(tmp1)
+		value1 := argvalue1
+		fmt.Print(client.ListRoles(context.Background(), value0, value1))
+		fmt.Print("\n")
+		break
+	case "get_privilege_set":
+		if flag.NArg()-1 != 3 {
+			fmt.Fprintln(os.Stderr, "GetPrivilegeSet requires 3 args")
+			flag.Usage()
+		}
+		arg403 := flag.Arg(1)
+		mbTrans404 := thrift.NewTMemoryBufferLen(len(arg403))
+		defer mbTrans404.Close()
+		_, err405 := mbTrans404.WriteString(arg403)
+		if err405 != nil {
+			Usage()
+			return
+		}
+		factory406 := thrift.NewTJSONProtocolFactory()
+		jsProt407 := factory406.GetProtocol(mbTrans404)
+		argvalue0 := hive_metastore.NewHiveObjectRef()
+		err408 := argvalue0.Read(jsProt407)
+		if err408 != nil {
+			Usage()
+			return
+		}
+		value0 := argvalue0
+		argvalue1 := flag.Arg(2)
+		value1 := argvalue1
+		arg410 := flag.Arg(3)
+		mbTrans411 := thrift.NewTMemoryBufferLen(len(arg410))
+		defer mbTrans411.Close()
+		_, err412 := mbTrans411.WriteString(arg410)
+		if err412 != nil {
+			Usage()
+			return
+		}
+		factory413 := thrift.NewTJSONProtocolFactory()
+		jsProt414 := factory413.GetProtocol(mbTrans411)
+		containerStruct2 := hive_metastore.NewThriftHiveMetastoreGetPrivilegeSetArgs()
+		err415 := containerStruct2.ReadField3(jsProt414)
+		if err415 != nil {
+			Usage()
+			return
+		}
+		argvalue2 := containerStruct2.GroupNames
+		value2 := argvalue2
+		fmt.Print(client.GetPrivilegeSet(context.Background(), value0, value1, value2))
+		fmt.Print("\n")
+		break
+	case "list_privileges":
+		if flag.NArg()-1 != 3 {
+			fmt.Fprintln(os.Stderr, "ListPrivileges requires 3 args")
+			flag.Usage()
+		}
+		argvalue0 := flag.Arg(1)
+		value0 := argvalue0
+		tmp1, err := (strconv.Atoi(flag.Arg(2)))
+		if err != nil {
+			Usage()
+			return
+		}
+		argvalue1 := hive_metastore.PrincipalType(tmp1)
+		value1 := argvalue1
+		arg417 := flag.Arg(3)
+		mbTrans418 := thrift.NewTMemoryBufferLen(len(arg417))
+		defer mbTrans418.Close()
+		_, err419 := mbTrans418.WriteString(arg417)
+		if err419 != nil {
+			Usage()
+			return
+		}
+		factory420 := thrift.NewTJSONProtocolFactory()
+		jsProt421 := factory420.GetProtocol(mbTrans418)
+		argvalue2 := hive_metastore.NewHiveObjectRef()
+		err422 := argvalue2.Read(jsProt421)
+		if err422 != nil {
+			Usage()
+			return
+		}
+		value2 := argvalue2
+		fmt.Print(client.ListPrivileges(context.Background(), value0, value1, value2))
+		fmt.Print("\n")
+		break
+	case "grant_privileges":
+		if flag.NArg()-1 != 1 {
+			fmt.Fprintln(os.Stderr, "GrantPrivileges requires 1 args")
+			flag.Usage()
+		}
+		arg423 := flag.Arg(1)
+		mbTrans424 := thrift.NewTMemoryBufferLen(len(arg423))
+		defer mbTrans424.Close()
+		_, err425 := mbTrans424.WriteString(arg423)
+		if err425 != nil {
+			Usage()
+			return
+		}
+		factory426 := thrift.NewTJSONProtocolFactory()
+		jsProt427 := factory426.GetProtocol(mbTrans424)
+		argvalue0 := hive_metastore.NewPrivilegeBag()
+		err428 := argvalue0.Read(jsProt427)
+		if err428 != nil {
+			Usage()
+			return
+		}
+		value0 := argvalue0
+		fmt.Print(client.GrantPrivileges(context.Background(), value0))
+		fmt.Print("\n")
+		break
+	case "revoke_privileges":
+		if flag.NArg()-1 != 1 {
+			fmt.Fprintln(os.Stderr, "RevokePrivileges requires 1 args")
+			flag.Usage()
+		}
+		arg429 := flag.Arg(1)
+		mbTrans430 := thrift.NewTMemoryBufferLen(len(arg429))
+		defer mbTrans430.Close()
+		_, err431 := mbTrans430.WriteString(arg429)
+		if err431 != nil {
+			Usage()
+			return
+		}
+		factory432 := thrift.NewTJSONProtocolFactory()
+		jsProt433 := factory432.GetProtocol(mbTrans430)
+		argvalue0 := hive_metastore.NewPrivilegeBag()
+		err434 := argvalue0.Read(jsProt433)
+		if err434 != nil {
+			Usage()
+			return
+		}
+		value0 := argvalue0
+		fmt.Print(client.RevokePrivileges(context.Background(), value0))
+		fmt.Print("\n")
+		break
+	case "get_delegation_token":
+		if flag.NArg()-1 != 1 {
+			fmt.Fprintln(os.Stderr, "GetDelegationToken requires 1 args")
+			flag.Usage()
+		}
+		argvalue0 := flag.Arg(1)
+		value0 := argvalue0
+		fmt.Print(client.GetDelegationToken(context.Background(), value0))
+		fmt.Print("\n")
+		break
+	case "get_delegation_token_with_signature":
+		if flag.NArg()-1 != 2 {
+			fmt.Fprintln(os.Stderr, "GetDelegationTokenWithSignature requires 2 args")
+			flag.Usage()
+		}
+		argvalue0 := flag.Arg(1)
+		value0 := argvalue0
+		argvalue1 := flag.Arg(2)
+		value1 := argvalue1
+		fmt.Print(client.GetDelegationTokenWithSignature(context.Background(), value0, value1))
+		fmt.Print("\n")
+		break
+	case "renew_delegation_token":
+		if flag.NArg()-1 != 1 {
+			fmt.Fprintln(os.Stderr, "RenewDelegationToken requires 1 args")
+			flag.Usage()
+		}
+		argvalue0 := flag.Arg(1)
+		value0 := argvalue0
+		fmt.Print(client.RenewDelegationToken(context.Background(), value0))
+		fmt.Print("\n")
+		break
+	case "cancel_delegation_token":
+		if flag.NArg()-1 != 1 {
+			fmt.Fprintln(os.Stderr, "CancelDelegationToken requires 1 args")
+			flag.Usage()
+		}
+		argvalue0 := flag.Arg(1)
+		value0 := argvalue0
+		fmt.Print(client.CancelDelegationToken(context.Background(), value0))
+		fmt.Print("\n")
+		break
+	case "getName":
+		if flag.NArg()-1 != 0 {
+			fmt.Fprintln(os.Stderr, "GetName requires 0 args")
+			flag.Usage()
+		}
+		fmt.Print(client.GetName(context.Background()))
+		fmt.Print("\n")
+		break
+	case "getVersion":
+		if flag.NArg()-1 != 0 {
+			fmt.Fprintln(os.Stderr, "GetVersion requires 0 args")
+			flag.Usage()
+		}
+		fmt.Print(client.GetVersion(context.Background()))
+		fmt.Print("\n")
+		break
+	case "getStatus":
+		if flag.NArg()-1 != 0 {
+			fmt.Fprintln(os.Stderr, "GetStatus requires 0 args")
+			flag.Usage()
+		}
+		fmt.Print(client.GetStatus(context.Background()))
+		fmt.Print("\n")
+		break
+	case "getStatusDetails":
+		if flag.NArg()-1 != 0 {
+			fmt.Fprintln(os.Stderr, "GetStatusDetails requires 0 args")
+			flag.Usage()
+		}
+		fmt.Print(client.GetStatusDetails(context.Background()))
+		fmt.Print("\n")
+		break
+	case "getCounters":
+		if flag.NArg()-1 != 0 {
+			fmt.Fprintln(os.Stderr, "GetCounters requires 0 args")
+			flag.Usage()
+		}
+		fmt.Print(client.GetCounters(context.Background()))
+		fmt.Print("\n")
+		break
+	case "getCounter":
+		if flag.NArg()-1 != 1 {
+			fmt.Fprintln(os.Stderr, "GetCounter requires 1 args")
+			flag.Usage()
+		}
+		argvalue0 := flag.Arg(1)
+		value0 := argvalue0
+		fmt.Print(client.GetCounter(context.Background(), value0))
+		fmt.Print("\n")
+		break
+	case "setOption":
+		if flag.NArg()-1 != 2 {
+			fmt.Fprintln(os.Stderr, "SetOption requires 2 args")
+			flag.Usage()
+		}
+		argvalue0 := flag.Arg(1)
+		value0 := argvalue0
+		argvalue1 := flag.Arg(2)
+		value1 := argvalue1
+		fmt.Print(client.SetOption(context.Background(), value0, value1))
+		fmt.Print("\n")
+		break
+	case "getOption":
+		if flag.NArg()-1 != 1 {
+			fmt.Fprintln(os.Stderr, "GetOption requires 1 args")
+			flag.Usage()
+		}
+		argvalue0 := flag.Arg(1)
+		value0 := argvalue0
+		fmt.Print(client.GetOption(context.Background(), value0))
+		fmt.Print("\n")
+		break
+	case "getOptions":
+		if flag.NArg()-1 != 0 {
+			fmt.Fprintln(os.Stderr, "GetOptions requires 0 args")
+			flag.Usage()
+		}
+		fmt.Print(client.GetOptions(context.Background()))
+		fmt.Print("\n")
+		break
+	case "getCpuProfile":
+		if flag.NArg()-1 != 1 {
+			fmt.Fprintln(os.Stderr, "GetCpuProfile requires 1 args")
+			flag.Usage()
+		}
+		tmp0, err444 := (strconv.Atoi(flag.Arg(1)))
+		if err444 != nil {
+			Usage()
+			return
+		}
+		argvalue0 := int32(tmp0)
+		value0 := argvalue0
+		fmt.Print(client.GetCpuProfile(context.Background(), value0))
+		fmt.Print("\n")
+		break
+	case "aliveSince":
+		if flag.NArg()-1 != 0 {
+			fmt.Fprintln(os.Stderr, "AliveSince requires 0 args")
+			flag.Usage()
+		}
+		fmt.Print(client.AliveSince(context.Background()))
+		fmt.Print("\n")
+		break
+	case "reinitialize":
+		if flag.NArg()-1 != 0 {
+			fmt.Fprintln(os.Stderr, "Reinitialize requires 0 args")
+			flag.Usage()
+		}
+		fmt.Print(client.Reinitialize(context.Background()))
+		fmt.Print("\n")
+		break
+	case "shutdown":
+		if flag.NArg()-1 != 0 {
+			fmt.Fprintln(os.Stderr, "Shutdown requires 0 args")
+			flag.Usage()
+		}
+		fmt.Print(client.Shutdown(context.Background()))
+		fmt.Print("\n")
+		break
+	case "":
+		Usage()
+		break
+	default:
+		fmt.Fprintln(os.Stderr, "Invalid function ", cmd)
+	}
 }

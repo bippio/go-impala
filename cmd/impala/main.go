@@ -15,7 +15,7 @@ import (
 	"syscall"
 	"time"
 
-	impala "github.com/bippio/go-impala"
+	impala "github.com/mangup/go-impala"
 )
 
 func main() {
@@ -109,11 +109,11 @@ func query(ctx context.Context, opts *impala.Options, query string) error {
 	connector := impala.NewConnector(opts)
 
 	db := sql.OpenDB(connector)
-	
-	defer func () {
+
+	defer func() {
 		db.Close()
 	}()
-	
+
 	if err := db.PingContext(ctx); err != nil {
 		return err
 	}

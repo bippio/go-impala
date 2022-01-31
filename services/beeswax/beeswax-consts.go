@@ -6,11 +6,10 @@ package beeswax
 import (
 	"bytes"
 	"context"
-	"reflect"
 	"fmt"
 	"github.com/apache/thrift/lib/go/thrift"
-	"github.com/bippio/go-impala/services/hive_metastore"
-
+	"github.com/mangup/go-impala/services/hive_metastore"
+	"reflect"
 )
 
 // (needed to ensure safety because of naive import list construction.)
@@ -24,4 +23,3 @@ var _ = hive_metastore.GoUnusedProtection__
 
 func init() {
 }
-

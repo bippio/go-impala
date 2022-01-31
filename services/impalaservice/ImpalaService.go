@@ -6,15 +6,14 @@ package impalaservice
 import (
 	"bytes"
 	"context"
-	"reflect"
 	"database/sql/driver"
 	"errors"
 	"fmt"
 	"github.com/apache/thrift/lib/go/thrift"
-	"github.com/bippio/go-impala/services/status"
-	"github.com/bippio/go-impala/services/beeswax"
-	"github.com/bippio/go-impala/services/cli_service"
-
+	"github.com/mangup/go-impala/services/beeswax"
+	"github.com/mangup/go-impala/services/cli_service"
+	"github.com/mangup/go-impala/services/status"
+	"reflect"
 )
 
 // (needed to ensure safety because of naive import list construction.)
@@ -27,797 +26,866 @@ var _ = bytes.Equal
 var _ = status.GoUnusedProtection__
 var _ = beeswax.GoUnusedProtection__
 var _ = cli_service.GoUnusedProtection__
+
 type TImpalaQueryOptions int64
+
 const (
-  TImpalaQueryOptions_ABORT_ON_ERROR TImpalaQueryOptions = 0
-  TImpalaQueryOptions_MAX_ERRORS TImpalaQueryOptions = 1
-  TImpalaQueryOptions_DISABLE_CODEGEN TImpalaQueryOptions = 2
-  TImpalaQueryOptions_BATCH_SIZE TImpalaQueryOptions = 3
-  TImpalaQueryOptions_MEM_LIMIT TImpalaQueryOptions = 4
-  TImpalaQueryOptions_NUM_NODES TImpalaQueryOptions = 5
-  TImpalaQueryOptions_MAX_SCAN_RANGE_LENGTH TImpalaQueryOptions = 6
-  TImpalaQueryOptions_MAX_IO_BUFFERS TImpalaQueryOptions = 7
-  TImpalaQueryOptions_NUM_SCANNER_THREADS TImpalaQueryOptions = 8
-  TImpalaQueryOptions_ALLOW_UNSUPPORTED_FORMATS TImpalaQueryOptions = 9
-  TImpalaQueryOptions_DEFAULT_ORDER_BY_LIMIT TImpalaQueryOptions = 10
-  TImpalaQueryOptions_DEBUG_ACTION TImpalaQueryOptions = 11
+	TImpalaQueryOptions_ABORT_ON_ERROR            TImpalaQueryOptions = 0
+	TImpalaQueryOptions_MAX_ERRORS                TImpalaQueryOptions = 1
+	TImpalaQueryOptions_DISABLE_CODEGEN           TImpalaQueryOptions = 2
+	TImpalaQueryOptions_BATCH_SIZE                TImpalaQueryOptions = 3
+	TImpalaQueryOptions_MEM_LIMIT                 TImpalaQueryOptions = 4
+	TImpalaQueryOptions_NUM_NODES                 TImpalaQueryOptions = 5
+	TImpalaQueryOptions_MAX_SCAN_RANGE_LENGTH     TImpalaQueryOptions = 6
+	TImpalaQueryOptions_MAX_IO_BUFFERS            TImpalaQueryOptions = 7
+	TImpalaQueryOptions_NUM_SCANNER_THREADS       TImpalaQueryOptions = 8
+	TImpalaQueryOptions_ALLOW_UNSUPPORTED_FORMATS TImpalaQueryOptions = 9
+	TImpalaQueryOptions_DEFAULT_ORDER_BY_LIMIT    TImpalaQueryOptions = 10
+	TImpalaQueryOptions_DEBUG_ACTION              TImpalaQueryOptions = 11
 )
 
 func (p TImpalaQueryOptions) String() string {
-  switch p {
-  case TImpalaQueryOptions_ABORT_ON_ERROR: return "ABORT_ON_ERROR"
-  case TImpalaQueryOptions_MAX_ERRORS: return "MAX_ERRORS"
-  case TImpalaQueryOptions_DISABLE_CODEGEN: return "DISABLE_CODEGEN"
-  case TImpalaQueryOptions_BATCH_SIZE: return "BATCH_SIZE"
-  case TImpalaQueryOptions_MEM_LIMIT: return "MEM_LIMIT"
-  case TImpalaQueryOptions_NUM_NODES: return "NUM_NODES"
-  case TImpalaQueryOptions_MAX_SCAN_RANGE_LENGTH: return "MAX_SCAN_RANGE_LENGTH"
-  case TImpalaQueryOptions_MAX_IO_BUFFERS: return "MAX_IO_BUFFERS"
-  case TImpalaQueryOptions_NUM_SCANNER_THREADS: return "NUM_SCANNER_THREADS"
-  case TImpalaQueryOptions_ALLOW_UNSUPPORTED_FORMATS: return "ALLOW_UNSUPPORTED_FORMATS"
-  case TImpalaQueryOptions_DEFAULT_ORDER_BY_LIMIT: return "DEFAULT_ORDER_BY_LIMIT"
-  case TImpalaQueryOptions_DEBUG_ACTION: return "DEBUG_ACTION"
-  }
-  return "<UNSET>"
+	switch p {
+	case TImpalaQueryOptions_ABORT_ON_ERROR:
+		return "ABORT_ON_ERROR"
+	case TImpalaQueryOptions_MAX_ERRORS:
+		return "MAX_ERRORS"
+	case TImpalaQueryOptions_DISABLE_CODEGEN:
+		return "DISABLE_CODEGEN"
+	case TImpalaQueryOptions_BATCH_SIZE:
+		return "BATCH_SIZE"
+	case TImpalaQueryOptions_MEM_LIMIT:
+		return "MEM_LIMIT"
+	case TImpalaQueryOptions_NUM_NODES:
+		return "NUM_NODES"
+	case TImpalaQueryOptions_MAX_SCAN_RANGE_LENGTH:
+		return "MAX_SCAN_RANGE_LENGTH"
+	case TImpalaQueryOptions_MAX_IO_BUFFERS:
+		return "MAX_IO_BUFFERS"
+	case TImpalaQueryOptions_NUM_SCANNER_THREADS:
+		return "NUM_SCANNER_THREADS"
+	case TImpalaQueryOptions_ALLOW_UNSUPPORTED_FORMATS:
+		return "ALLOW_UNSUPPORTED_FORMATS"
+	case TImpalaQueryOptions_DEFAULT_ORDER_BY_LIMIT:
+		return "DEFAULT_ORDER_BY_LIMIT"
+	case TImpalaQueryOptions_DEBUG_ACTION:
+		return "DEBUG_ACTION"
+	}
+	return "<UNSET>"
 }
 
 func TImpalaQueryOptionsFromString(s string) (TImpalaQueryOptions, error) {
-  switch s {
-  case "ABORT_ON_ERROR": return TImpalaQueryOptions_ABORT_ON_ERROR, nil 
-  case "MAX_ERRORS": return TImpalaQueryOptions_MAX_ERRORS, nil 
-  case "DISABLE_CODEGEN": return TImpalaQueryOptions_DISABLE_CODEGEN, nil 
-  case "BATCH_SIZE": return TImpalaQueryOptions_BATCH_SIZE, nil 
-  case "MEM_LIMIT": return TImpalaQueryOptions_MEM_LIMIT, nil 
-  case "NUM_NODES": return TImpalaQueryOptions_NUM_NODES, nil 
-  case "MAX_SCAN_RANGE_LENGTH": return TImpalaQueryOptions_MAX_SCAN_RANGE_LENGTH, nil 
-  case "MAX_IO_BUFFERS": return TImpalaQueryOptions_MAX_IO_BUFFERS, nil 
-  case "NUM_SCANNER_THREADS": return TImpalaQueryOptions_NUM_SCANNER_THREADS, nil 
-  case "ALLOW_UNSUPPORTED_FORMATS": return TImpalaQueryOptions_ALLOW_UNSUPPORTED_FORMATS, nil 
-  case "DEFAULT_ORDER_BY_LIMIT": return TImpalaQueryOptions_DEFAULT_ORDER_BY_LIMIT, nil 
-  case "DEBUG_ACTION": return TImpalaQueryOptions_DEBUG_ACTION, nil 
-  }
-  return TImpalaQueryOptions(0), fmt.Errorf("not a valid TImpalaQueryOptions string")
+	switch s {
+	case "ABORT_ON_ERROR":
+		return TImpalaQueryOptions_ABORT_ON_ERROR, nil
+	case "MAX_ERRORS":
+		return TImpalaQueryOptions_MAX_ERRORS, nil
+	case "DISABLE_CODEGEN":
+		return TImpalaQueryOptions_DISABLE_CODEGEN, nil
+	case "BATCH_SIZE":
+		return TImpalaQueryOptions_BATCH_SIZE, nil
+	case "MEM_LIMIT":
+		return TImpalaQueryOptions_MEM_LIMIT, nil
+	case "NUM_NODES":
+		return TImpalaQueryOptions_NUM_NODES, nil
+	case "MAX_SCAN_RANGE_LENGTH":
+		return TImpalaQueryOptions_MAX_SCAN_RANGE_LENGTH, nil
+	case "MAX_IO_BUFFERS":
+		return TImpalaQueryOptions_MAX_IO_BUFFERS, nil
+	case "NUM_SCANNER_THREADS":
+		return TImpalaQueryOptions_NUM_SCANNER_THREADS, nil
+	case "ALLOW_UNSUPPORTED_FORMATS":
+		return TImpalaQueryOptions_ALLOW_UNSUPPORTED_FORMATS, nil
+	case "DEFAULT_ORDER_BY_LIMIT":
+		return TImpalaQueryOptions_DEFAULT_ORDER_BY_LIMIT, nil
+	case "DEBUG_ACTION":
+		return TImpalaQueryOptions_DEBUG_ACTION, nil
+	}
+	return TImpalaQueryOptions(0), fmt.Errorf("not a valid TImpalaQueryOptions string")
 }
-
 
 func TImpalaQueryOptionsPtr(v TImpalaQueryOptions) *TImpalaQueryOptions { return &v }
 
 func (p TImpalaQueryOptions) MarshalText() ([]byte, error) {
-return []byte(p.String()), nil
+	return []byte(p.String()), nil
 }
 
 func (p *TImpalaQueryOptions) UnmarshalText(text []byte) error {
-q, err := TImpalaQueryOptionsFromString(string(text))
-if (err != nil) {
-return err
-}
-*p = q
-return nil
+	q, err := TImpalaQueryOptionsFromString(string(text))
+	if err != nil {
+		return err
+	}
+	*p = q
+	return nil
 }
 
 func (p *TImpalaQueryOptions) Scan(value interface{}) error {
-v, ok := value.(int64)
-if !ok {
-return errors.New("Scan value is not int64")
-}
-*p = TImpalaQueryOptions(v)
-return nil
+	v, ok := value.(int64)
+	if !ok {
+		return errors.New("Scan value is not int64")
+	}
+	*p = TImpalaQueryOptions(v)
+	return nil
 }
 
-func (p * TImpalaQueryOptions) Value() (driver.Value, error) {
-  if p == nil {
-    return nil, nil
-  }
-return int64(*p), nil
+func (p *TImpalaQueryOptions) Value() (driver.Value, error) {
+	if p == nil {
+		return nil, nil
+	}
+	return int64(*p), nil
 }
+
 // Attributes:
 //  - RowsAppended
 type TInsertResult_ struct {
-  RowsAppended map[string]int64 `thrift:"rows_appended,1,required" db:"rows_appended" json:"rows_appended"`
+	RowsAppended map[string]int64 `thrift:"rows_appended,1,required" db:"rows_appended" json:"rows_appended"`
 }
 
 func NewTInsertResult_() *TInsertResult_ {
-  return &TInsertResult_{}
+	return &TInsertResult_{}
 }
-
 
 func (p *TInsertResult_) GetRowsAppended() map[string]int64 {
-  return p.RowsAppended
+	return p.RowsAppended
 }
 func (p *TInsertResult_) Read(iprot thrift.TProtocol) error {
-  if _, err := iprot.ReadStructBegin(); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
-  }
+	if _, err := iprot.ReadStructBegin(); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
+	}
 
-  var issetRowsAppended bool = false;
+	var issetRowsAppended bool = false
 
-  for {
-    _, fieldTypeId, fieldId, err := iprot.ReadFieldBegin()
-    if err != nil {
-      return thrift.PrependError(fmt.Sprintf("%T field %d read error: ", p, fieldId), err)
-    }
-    if fieldTypeId == thrift.STOP { break; }
-    switch fieldId {
-    case 1:
-      if fieldTypeId == thrift.MAP {
-        if err := p.ReadField1(iprot); err != nil {
-          return err
-        }
-        issetRowsAppended = true
-      } else {
-        if err := iprot.Skip(fieldTypeId); err != nil {
-          return err
-        }
-      }
-    default:
-      if err := iprot.Skip(fieldTypeId); err != nil {
-        return err
-      }
-    }
-    if err := iprot.ReadFieldEnd(); err != nil {
-      return err
-    }
-  }
-  if err := iprot.ReadStructEnd(); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
-  }
-  if !issetRowsAppended{
-    return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field RowsAppended is not set"));
-  }
-  return nil
+	for {
+		_, fieldTypeId, fieldId, err := iprot.ReadFieldBegin()
+		if err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T field %d read error: ", p, fieldId), err)
+		}
+		if fieldTypeId == thrift.STOP {
+			break
+		}
+		switch fieldId {
+		case 1:
+			if fieldTypeId == thrift.MAP {
+				if err := p.ReadField1(iprot); err != nil {
+					return err
+				}
+				issetRowsAppended = true
+			} else {
+				if err := iprot.Skip(fieldTypeId); err != nil {
+					return err
+				}
+			}
+		default:
+			if err := iprot.Skip(fieldTypeId); err != nil {
+				return err
+			}
+		}
+		if err := iprot.ReadFieldEnd(); err != nil {
+			return err
+		}
+	}
+	if err := iprot.ReadStructEnd(); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
+	}
+	if !issetRowsAppended {
+		return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field RowsAppended is not set"))
+	}
+	return nil
 }
 
-func (p *TInsertResult_)  ReadField1(iprot thrift.TProtocol) error {
-  _, _, size, err := iprot.ReadMapBegin()
-  if err != nil {
-    return thrift.PrependError("error reading map begin: ", err)
-  }
-  tMap := make(map[string]int64, size)
-  p.RowsAppended =  tMap
-  for i := 0; i < size; i ++ {
-var _key0 string
-    if v, err := iprot.ReadString(); err != nil {
-    return thrift.PrependError("error reading field 0: ", err)
-} else {
-    _key0 = v
-}
-var _val1 int64
-    if v, err := iprot.ReadI64(); err != nil {
-    return thrift.PrependError("error reading field 0: ", err)
-} else {
-    _val1 = v
-}
-    p.RowsAppended[_key0] = _val1
-  }
-  if err := iprot.ReadMapEnd(); err != nil {
-    return thrift.PrependError("error reading map end: ", err)
-  }
-  return nil
+func (p *TInsertResult_) ReadField1(iprot thrift.TProtocol) error {
+	_, _, size, err := iprot.ReadMapBegin()
+	if err != nil {
+		return thrift.PrependError("error reading map begin: ", err)
+	}
+	tMap := make(map[string]int64, size)
+	p.RowsAppended = tMap
+	for i := 0; i < size; i++ {
+		var _key0 string
+		if v, err := iprot.ReadString(); err != nil {
+			return thrift.PrependError("error reading field 0: ", err)
+		} else {
+			_key0 = v
+		}
+		var _val1 int64
+		if v, err := iprot.ReadI64(); err != nil {
+			return thrift.PrependError("error reading field 0: ", err)
+		} else {
+			_val1 = v
+		}
+		p.RowsAppended[_key0] = _val1
+	}
+	if err := iprot.ReadMapEnd(); err != nil {
+		return thrift.PrependError("error reading map end: ", err)
+	}
+	return nil
 }
 
 func (p *TInsertResult_) Write(oprot thrift.TProtocol) error {
-  if err := oprot.WriteStructBegin("TInsertResult"); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err) }
-  if p != nil {
-    if err := p.writeField1(oprot); err != nil { return err }
-  }
-  if err := oprot.WriteFieldStop(); err != nil {
-    return thrift.PrependError("write field stop error: ", err) }
-  if err := oprot.WriteStructEnd(); err != nil {
-    return thrift.PrependError("write struct stop error: ", err) }
-  return nil
+	if err := oprot.WriteStructBegin("TInsertResult"); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err)
+	}
+	if p != nil {
+		if err := p.writeField1(oprot); err != nil {
+			return err
+		}
+	}
+	if err := oprot.WriteFieldStop(); err != nil {
+		return thrift.PrependError("write field stop error: ", err)
+	}
+	if err := oprot.WriteStructEnd(); err != nil {
+		return thrift.PrependError("write struct stop error: ", err)
+	}
+	return nil
 }
 
 func (p *TInsertResult_) writeField1(oprot thrift.TProtocol) (err error) {
-  if err := oprot.WriteFieldBegin("rows_appended", thrift.MAP, 1); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T write field begin error 1:rows_appended: ", p), err) }
-  if err := oprot.WriteMapBegin(thrift.STRING, thrift.I64, len(p.RowsAppended)); err != nil {
-    return thrift.PrependError("error writing map begin: ", err)
-  }
-  for k, v := range p.RowsAppended {
-    if err := oprot.WriteString(string(k)); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T. (0) field write error: ", p), err) }
-    if err := oprot.WriteI64(int64(v)); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T. (0) field write error: ", p), err) }
-  }
-  if err := oprot.WriteMapEnd(); err != nil {
-    return thrift.PrependError("error writing map end: ", err)
-  }
-  if err := oprot.WriteFieldEnd(); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T write field end error 1:rows_appended: ", p), err) }
-  return err
+	if err := oprot.WriteFieldBegin("rows_appended", thrift.MAP, 1); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T write field begin error 1:rows_appended: ", p), err)
+	}
+	if err := oprot.WriteMapBegin(thrift.STRING, thrift.I64, len(p.RowsAppended)); err != nil {
+		return thrift.PrependError("error writing map begin: ", err)
+	}
+	for k, v := range p.RowsAppended {
+		if err := oprot.WriteString(string(k)); err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T. (0) field write error: ", p), err)
+		}
+		if err := oprot.WriteI64(int64(v)); err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T. (0) field write error: ", p), err)
+		}
+	}
+	if err := oprot.WriteMapEnd(); err != nil {
+		return thrift.PrependError("error writing map end: ", err)
+	}
+	if err := oprot.WriteFieldEnd(); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T write field end error 1:rows_appended: ", p), err)
+	}
+	return err
 }
 
 func (p *TInsertResult_) String() string {
-  if p == nil {
-    return "<nil>"
-  }
-  return fmt.Sprintf("TInsertResult_(%+v)", *p)
+	if p == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("TInsertResult_(%+v)", *p)
 }
 
 type ImpalaService interface {
-  beeswax.BeeswaxService
+	beeswax.BeeswaxService
 
-  // Parameters:
-  //  - QueryID
-  Cancel(ctx context.Context, query_id *beeswax.QueryHandle) (r *status.TStatus, err error)
-  // Parameters:
-  //  - Handle
-  CloseInsert(ctx context.Context, handle *beeswax.QueryHandle) (r *TInsertResult_, err error)
-  PingImpalaService(ctx context.Context) (err error)
+	// Parameters:
+	//  - QueryID
+	Cancel(ctx context.Context, query_id *beeswax.QueryHandle) (r *status.TStatus, err error)
+	// Parameters:
+	//  - Handle
+	CloseInsert(ctx context.Context, handle *beeswax.QueryHandle) (r *TInsertResult_, err error)
+	PingImpalaService(ctx context.Context) (err error)
 }
 
 type ImpalaServiceClient struct {
-  *beeswax.BeeswaxServiceClient
+	*beeswax.BeeswaxServiceClient
 }
 
 func NewImpalaServiceClientFactory(t thrift.TTransport, f thrift.TProtocolFactory) *ImpalaServiceClient {
-  return &ImpalaServiceClient{BeeswaxServiceClient: beeswax.NewBeeswaxServiceClientFactory(t, f)}}
+	return &ImpalaServiceClient{BeeswaxServiceClient: beeswax.NewBeeswaxServiceClientFactory(t, f)}
+}
 
 func NewImpalaServiceClientProtocol(t thrift.TTransport, iprot thrift.TProtocol, oprot thrift.TProtocol) *ImpalaServiceClient {
-  return &ImpalaServiceClient{BeeswaxServiceClient: beeswax.NewBeeswaxServiceClientProtocol(t, iprot, oprot)}
+	return &ImpalaServiceClient{BeeswaxServiceClient: beeswax.NewBeeswaxServiceClientProtocol(t, iprot, oprot)}
 }
 
 func NewImpalaServiceClient(c thrift.TClient) *ImpalaServiceClient {
-  return &ImpalaServiceClient{
-    BeeswaxServiceClient: beeswax.NewBeeswaxServiceClient(c),
-  }
+	return &ImpalaServiceClient{
+		BeeswaxServiceClient: beeswax.NewBeeswaxServiceClient(c),
+	}
 }
 
 // Parameters:
 //  - QueryID
 func (p *ImpalaServiceClient) Cancel(ctx context.Context, query_id *beeswax.QueryHandle) (r *status.TStatus, err error) {
-  var _args2 ImpalaServiceCancelArgs
-  _args2.QueryID = query_id
-  var _result3 ImpalaServiceCancelResult
-  if err = p.Client_().Call(ctx, "Cancel", &_args2, &_result3); err != nil {
-    return
-  }
-  switch {
-  case _result3.Error!= nil:
-    return r, _result3.Error
-  }
+	var _args2 ImpalaServiceCancelArgs
+	_args2.QueryID = query_id
+	var _result3 ImpalaServiceCancelResult
+	if err = p.Client_().Call(ctx, "Cancel", &_args2, &_result3); err != nil {
+		return
+	}
+	switch {
+	case _result3.Error != nil:
+		return r, _result3.Error
+	}
 
-  return _result3.GetSuccess(), nil
+	return _result3.GetSuccess(), nil
 }
 
 // Parameters:
 //  - Handle
 func (p *ImpalaServiceClient) CloseInsert(ctx context.Context, handle *beeswax.QueryHandle) (r *TInsertResult_, err error) {
-  var _args4 ImpalaServiceCloseInsertArgs
-  _args4.Handle = handle
-  var _result5 ImpalaServiceCloseInsertResult
-  if err = p.Client_().Call(ctx, "CloseInsert", &_args4, &_result5); err != nil {
-    return
-  }
-  switch {
-  case _result5.Error!= nil:
-    return r, _result5.Error
-  case _result5.Error2!= nil:
-    return r, _result5.Error2
-  }
+	var _args4 ImpalaServiceCloseInsertArgs
+	_args4.Handle = handle
+	var _result5 ImpalaServiceCloseInsertResult
+	if err = p.Client_().Call(ctx, "CloseInsert", &_args4, &_result5); err != nil {
+		return
+	}
+	switch {
+	case _result5.Error != nil:
+		return r, _result5.Error
+	case _result5.Error2 != nil:
+		return r, _result5.Error2
+	}
 
-  return _result5.GetSuccess(), nil
+	return _result5.GetSuccess(), nil
 }
 
 func (p *ImpalaServiceClient) PingImpalaService(ctx context.Context) (err error) {
-  var _args6 ImpalaServicePingImpalaServiceArgs
-  var _result7 ImpalaServicePingImpalaServiceResult
-  if err = p.Client_().Call(ctx, "PingImpalaService", &_args6, &_result7); err != nil {
-    return
-  }
-  return nil
+	var _args6 ImpalaServicePingImpalaServiceArgs
+	var _result7 ImpalaServicePingImpalaServiceResult
+	if err = p.Client_().Call(ctx, "PingImpalaService", &_args6, &_result7); err != nil {
+		return
+	}
+	return nil
 }
 
 type ImpalaServiceProcessor struct {
-  *beeswax.BeeswaxServiceProcessor
+	*beeswax.BeeswaxServiceProcessor
 }
 
 func NewImpalaServiceProcessor(handler ImpalaService) *ImpalaServiceProcessor {
-  self8 := &ImpalaServiceProcessor{beeswax.NewBeeswaxServiceProcessor(handler)}
-  self8.AddToProcessorMap("Cancel", &impalaServiceProcessorCancel{handler:handler})
-  self8.AddToProcessorMap("CloseInsert", &impalaServiceProcessorCloseInsert{handler:handler})
-  self8.AddToProcessorMap("PingImpalaService", &impalaServiceProcessorPingImpalaService{handler:handler})
-  return self8
+	self8 := &ImpalaServiceProcessor{beeswax.NewBeeswaxServiceProcessor(handler)}
+	self8.AddToProcessorMap("Cancel", &impalaServiceProcessorCancel{handler: handler})
+	self8.AddToProcessorMap("CloseInsert", &impalaServiceProcessorCloseInsert{handler: handler})
+	self8.AddToProcessorMap("PingImpalaService", &impalaServiceProcessorPingImpalaService{handler: handler})
+	return self8
 }
 
 type impalaServiceProcessorCancel struct {
-  handler ImpalaService
+	handler ImpalaService
 }
 
 func (p *impalaServiceProcessorCancel) Process(ctx context.Context, seqId int32, iprot, oprot thrift.TProtocol) (success bool, err thrift.TException) {
-  args := ImpalaServiceCancelArgs{}
-  if err = args.Read(iprot); err != nil {
-    iprot.ReadMessageEnd()
-    x := thrift.NewTApplicationException(thrift.PROTOCOL_ERROR, err.Error())
-    oprot.WriteMessageBegin("Cancel", thrift.EXCEPTION, seqId)
-    x.Write(oprot)
-    oprot.WriteMessageEnd()
-    oprot.Flush(ctx)
-    return false, err
-  }
+	args := ImpalaServiceCancelArgs{}
+	if err = args.Read(iprot); err != nil {
+		iprot.ReadMessageEnd()
+		x := thrift.NewTApplicationException(thrift.PROTOCOL_ERROR, err.Error())
+		oprot.WriteMessageBegin("Cancel", thrift.EXCEPTION, seqId)
+		x.Write(oprot)
+		oprot.WriteMessageEnd()
+		oprot.Flush(ctx)
+		return false, err
+	}
 
-  iprot.ReadMessageEnd()
-  result := ImpalaServiceCancelResult{}
-var retval *status.TStatus
-  var err2 error
-  if retval, err2 = p.handler.Cancel(ctx, args.QueryID); err2 != nil {
-  switch v := err2.(type) {
-    case *beeswax.BeeswaxException:
-  result.Error = v
-    default:
-    x := thrift.NewTApplicationException(thrift.INTERNAL_ERROR, "Internal error processing Cancel: " + err2.Error())
-    oprot.WriteMessageBegin("Cancel", thrift.EXCEPTION, seqId)
-    x.Write(oprot)
-    oprot.WriteMessageEnd()
-    oprot.Flush(ctx)
-    return true, err2
-  }
-  } else {
-    result.Success = retval
-}
-  if err2 = oprot.WriteMessageBegin("Cancel", thrift.REPLY, seqId); err2 != nil {
-    err = err2
-  }
-  if err2 = result.Write(oprot); err == nil && err2 != nil {
-    err = err2
-  }
-  if err2 = oprot.WriteMessageEnd(); err == nil && err2 != nil {
-    err = err2
-  }
-  if err2 = oprot.Flush(ctx); err == nil && err2 != nil {
-    err = err2
-  }
-  if err != nil {
-    return
-  }
-  return true, err
+	iprot.ReadMessageEnd()
+	result := ImpalaServiceCancelResult{}
+	var retval *status.TStatus
+	var err2 error
+	if retval, err2 = p.handler.Cancel(ctx, args.QueryID); err2 != nil {
+		switch v := err2.(type) {
+		case *beeswax.BeeswaxException:
+			result.Error = v
+		default:
+			x := thrift.NewTApplicationException(thrift.INTERNAL_ERROR, "Internal error processing Cancel: "+err2.Error())
+			oprot.WriteMessageBegin("Cancel", thrift.EXCEPTION, seqId)
+			x.Write(oprot)
+			oprot.WriteMessageEnd()
+			oprot.Flush(ctx)
+			return true, err2
+		}
+	} else {
+		result.Success = retval
+	}
+	if err2 = oprot.WriteMessageBegin("Cancel", thrift.REPLY, seqId); err2 != nil {
+		err = err2
+	}
+	if err2 = result.Write(oprot); err == nil && err2 != nil {
+		err = err2
+	}
+	if err2 = oprot.WriteMessageEnd(); err == nil && err2 != nil {
+		err = err2
+	}
+	if err2 = oprot.Flush(ctx); err == nil && err2 != nil {
+		err = err2
+	}
+	if err != nil {
+		return
+	}
+	return true, err
 }
 
 type impalaServiceProcessorCloseInsert struct {
-  handler ImpalaService
+	handler ImpalaService
 }
 
 func (p *impalaServiceProcessorCloseInsert) Process(ctx context.Context, seqId int32, iprot, oprot thrift.TProtocol) (success bool, err thrift.TException) {
-  args := ImpalaServiceCloseInsertArgs{}
-  if err = args.Read(iprot); err != nil {
-    iprot.ReadMessageEnd()
-    x := thrift.NewTApplicationException(thrift.PROTOCOL_ERROR, err.Error())
-    oprot.WriteMessageBegin("CloseInsert", thrift.EXCEPTION, seqId)
-    x.Write(oprot)
-    oprot.WriteMessageEnd()
-    oprot.Flush(ctx)
-    return false, err
-  }
+	args := ImpalaServiceCloseInsertArgs{}
+	if err = args.Read(iprot); err != nil {
+		iprot.ReadMessageEnd()
+		x := thrift.NewTApplicationException(thrift.PROTOCOL_ERROR, err.Error())
+		oprot.WriteMessageBegin("CloseInsert", thrift.EXCEPTION, seqId)
+		x.Write(oprot)
+		oprot.WriteMessageEnd()
+		oprot.Flush(ctx)
+		return false, err
+	}
 
-  iprot.ReadMessageEnd()
-  result := ImpalaServiceCloseInsertResult{}
-var retval *TInsertResult_
-  var err2 error
-  if retval, err2 = p.handler.CloseInsert(ctx, args.Handle); err2 != nil {
-  switch v := err2.(type) {
-    case *beeswax.QueryNotFoundException:
-  result.Error = v
-    case *beeswax.BeeswaxException:
-  result.Error2 = v
-    default:
-    x := thrift.NewTApplicationException(thrift.INTERNAL_ERROR, "Internal error processing CloseInsert: " + err2.Error())
-    oprot.WriteMessageBegin("CloseInsert", thrift.EXCEPTION, seqId)
-    x.Write(oprot)
-    oprot.WriteMessageEnd()
-    oprot.Flush(ctx)
-    return true, err2
-  }
-  } else {
-    result.Success = retval
-}
-  if err2 = oprot.WriteMessageBegin("CloseInsert", thrift.REPLY, seqId); err2 != nil {
-    err = err2
-  }
-  if err2 = result.Write(oprot); err == nil && err2 != nil {
-    err = err2
-  }
-  if err2 = oprot.WriteMessageEnd(); err == nil && err2 != nil {
-    err = err2
-  }
-  if err2 = oprot.Flush(ctx); err == nil && err2 != nil {
-    err = err2
-  }
-  if err != nil {
-    return
-  }
-  return true, err
+	iprot.ReadMessageEnd()
+	result := ImpalaServiceCloseInsertResult{}
+	var retval *TInsertResult_
+	var err2 error
+	if retval, err2 = p.handler.CloseInsert(ctx, args.Handle); err2 != nil {
+		switch v := err2.(type) {
+		case *beeswax.QueryNotFoundException:
+			result.Error = v
+		case *beeswax.BeeswaxException:
+			result.Error2 = v
+		default:
+			x := thrift.NewTApplicationException(thrift.INTERNAL_ERROR, "Internal error processing CloseInsert: "+err2.Error())
+			oprot.WriteMessageBegin("CloseInsert", thrift.EXCEPTION, seqId)
+			x.Write(oprot)
+			oprot.WriteMessageEnd()
+			oprot.Flush(ctx)
+			return true, err2
+		}
+	} else {
+		result.Success = retval
+	}
+	if err2 = oprot.WriteMessageBegin("CloseInsert", thrift.REPLY, seqId); err2 != nil {
+		err = err2
+	}
+	if err2 = result.Write(oprot); err == nil && err2 != nil {
+		err = err2
+	}
+	if err2 = oprot.WriteMessageEnd(); err == nil && err2 != nil {
+		err = err2
+	}
+	if err2 = oprot.Flush(ctx); err == nil && err2 != nil {
+		err = err2
+	}
+	if err != nil {
+		return
+	}
+	return true, err
 }
 
 type impalaServiceProcessorPingImpalaService struct {
-  handler ImpalaService
+	handler ImpalaService
 }
 
 func (p *impalaServiceProcessorPingImpalaService) Process(ctx context.Context, seqId int32, iprot, oprot thrift.TProtocol) (success bool, err thrift.TException) {
-  args := ImpalaServicePingImpalaServiceArgs{}
-  if err = args.Read(iprot); err != nil {
-    iprot.ReadMessageEnd()
-    x := thrift.NewTApplicationException(thrift.PROTOCOL_ERROR, err.Error())
-    oprot.WriteMessageBegin("PingImpalaService", thrift.EXCEPTION, seqId)
-    x.Write(oprot)
-    oprot.WriteMessageEnd()
-    oprot.Flush(ctx)
-    return false, err
-  }
+	args := ImpalaServicePingImpalaServiceArgs{}
+	if err = args.Read(iprot); err != nil {
+		iprot.ReadMessageEnd()
+		x := thrift.NewTApplicationException(thrift.PROTOCOL_ERROR, err.Error())
+		oprot.WriteMessageBegin("PingImpalaService", thrift.EXCEPTION, seqId)
+		x.Write(oprot)
+		oprot.WriteMessageEnd()
+		oprot.Flush(ctx)
+		return false, err
+	}
 
-  iprot.ReadMessageEnd()
-  result := ImpalaServicePingImpalaServiceResult{}
-  var err2 error
-  if err2 = p.handler.PingImpalaService(ctx); err2 != nil {
-    x := thrift.NewTApplicationException(thrift.INTERNAL_ERROR, "Internal error processing PingImpalaService: " + err2.Error())
-    oprot.WriteMessageBegin("PingImpalaService", thrift.EXCEPTION, seqId)
-    x.Write(oprot)
-    oprot.WriteMessageEnd()
-    oprot.Flush(ctx)
-    return true, err2
-  }
-  if err2 = oprot.WriteMessageBegin("PingImpalaService", thrift.REPLY, seqId); err2 != nil {
-    err = err2
-  }
-  if err2 = result.Write(oprot); err == nil && err2 != nil {
-    err = err2
-  }
-  if err2 = oprot.WriteMessageEnd(); err == nil && err2 != nil {
-    err = err2
-  }
-  if err2 = oprot.Flush(ctx); err == nil && err2 != nil {
-    err = err2
-  }
-  if err != nil {
-    return
-  }
-  return true, err
+	iprot.ReadMessageEnd()
+	result := ImpalaServicePingImpalaServiceResult{}
+	var err2 error
+	if err2 = p.handler.PingImpalaService(ctx); err2 != nil {
+		x := thrift.NewTApplicationException(thrift.INTERNAL_ERROR, "Internal error processing PingImpalaService: "+err2.Error())
+		oprot.WriteMessageBegin("PingImpalaService", thrift.EXCEPTION, seqId)
+		x.Write(oprot)
+		oprot.WriteMessageEnd()
+		oprot.Flush(ctx)
+		return true, err2
+	}
+	if err2 = oprot.WriteMessageBegin("PingImpalaService", thrift.REPLY, seqId); err2 != nil {
+		err = err2
+	}
+	if err2 = result.Write(oprot); err == nil && err2 != nil {
+		err = err2
+	}
+	if err2 = oprot.WriteMessageEnd(); err == nil && err2 != nil {
+		err = err2
+	}
+	if err2 = oprot.Flush(ctx); err == nil && err2 != nil {
+		err = err2
+	}
+	if err != nil {
+		return
+	}
+	return true, err
 }
-
 
 // HELPER FUNCTIONS AND STRUCTURES
 
 // Attributes:
 //  - QueryID
 type ImpalaServiceCancelArgs struct {
-  QueryID *beeswax.QueryHandle `thrift:"query_id,1" db:"query_id" json:"query_id"`
+	QueryID *beeswax.QueryHandle `thrift:"query_id,1" db:"query_id" json:"query_id"`
 }
 
 func NewImpalaServiceCancelArgs() *ImpalaServiceCancelArgs {
-  return &ImpalaServiceCancelArgs{}
+	return &ImpalaServiceCancelArgs{}
 }
 
 var ImpalaServiceCancelArgs_QueryID_DEFAULT *beeswax.QueryHandle
+
 func (p *ImpalaServiceCancelArgs) GetQueryID() *beeswax.QueryHandle {
-  if !p.IsSetQueryID() {
-    return ImpalaServiceCancelArgs_QueryID_DEFAULT
-  }
-return p.QueryID
+	if !p.IsSetQueryID() {
+		return ImpalaServiceCancelArgs_QueryID_DEFAULT
+	}
+	return p.QueryID
 }
 func (p *ImpalaServiceCancelArgs) IsSetQueryID() bool {
-  return p.QueryID != nil
+	return p.QueryID != nil
 }
 
 func (p *ImpalaServiceCancelArgs) Read(iprot thrift.TProtocol) error {
-  if _, err := iprot.ReadStructBegin(); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
-  }
+	if _, err := iprot.ReadStructBegin(); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
+	}
 
-
-  for {
-    _, fieldTypeId, fieldId, err := iprot.ReadFieldBegin()
-    if err != nil {
-      return thrift.PrependError(fmt.Sprintf("%T field %d read error: ", p, fieldId), err)
-    }
-    if fieldTypeId == thrift.STOP { break; }
-    switch fieldId {
-    case 1:
-      if fieldTypeId == thrift.STRUCT {
-        if err := p.ReadField1(iprot); err != nil {
-          return err
-        }
-      } else {
-        if err := iprot.Skip(fieldTypeId); err != nil {
-          return err
-        }
-      }
-    default:
-      if err := iprot.Skip(fieldTypeId); err != nil {
-        return err
-      }
-    }
-    if err := iprot.ReadFieldEnd(); err != nil {
-      return err
-    }
-  }
-  if err := iprot.ReadStructEnd(); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
-  }
-  return nil
+	for {
+		_, fieldTypeId, fieldId, err := iprot.ReadFieldBegin()
+		if err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T field %d read error: ", p, fieldId), err)
+		}
+		if fieldTypeId == thrift.STOP {
+			break
+		}
+		switch fieldId {
+		case 1:
+			if fieldTypeId == thrift.STRUCT {
+				if err := p.ReadField1(iprot); err != nil {
+					return err
+				}
+			} else {
+				if err := iprot.Skip(fieldTypeId); err != nil {
+					return err
+				}
+			}
+		default:
+			if err := iprot.Skip(fieldTypeId); err != nil {
+				return err
+			}
+		}
+		if err := iprot.ReadFieldEnd(); err != nil {
+			return err
+		}
+	}
+	if err := iprot.ReadStructEnd(); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
+	}
+	return nil
 }
 
-func (p *ImpalaServiceCancelArgs)  ReadField1(iprot thrift.TProtocol) error {
-  p.QueryID = &beeswax.QueryHandle{}
-  if err := p.QueryID.Read(iprot); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T error reading struct: ", p.QueryID), err)
-  }
-  return nil
+func (p *ImpalaServiceCancelArgs) ReadField1(iprot thrift.TProtocol) error {
+	p.QueryID = &beeswax.QueryHandle{}
+	if err := p.QueryID.Read(iprot); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T error reading struct: ", p.QueryID), err)
+	}
+	return nil
 }
 
 func (p *ImpalaServiceCancelArgs) Write(oprot thrift.TProtocol) error {
-  if err := oprot.WriteStructBegin("Cancel_args"); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err) }
-  if p != nil {
-    if err := p.writeField1(oprot); err != nil { return err }
-  }
-  if err := oprot.WriteFieldStop(); err != nil {
-    return thrift.PrependError("write field stop error: ", err) }
-  if err := oprot.WriteStructEnd(); err != nil {
-    return thrift.PrependError("write struct stop error: ", err) }
-  return nil
+	if err := oprot.WriteStructBegin("Cancel_args"); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err)
+	}
+	if p != nil {
+		if err := p.writeField1(oprot); err != nil {
+			return err
+		}
+	}
+	if err := oprot.WriteFieldStop(); err != nil {
+		return thrift.PrependError("write field stop error: ", err)
+	}
+	if err := oprot.WriteStructEnd(); err != nil {
+		return thrift.PrependError("write struct stop error: ", err)
+	}
+	return nil
 }
 
 func (p *ImpalaServiceCancelArgs) writeField1(oprot thrift.TProtocol) (err error) {
-  if err := oprot.WriteFieldBegin("query_id", thrift.STRUCT, 1); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T write field begin error 1:query_id: ", p), err) }
-  if err := p.QueryID.Write(oprot); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T error writing struct: ", p.QueryID), err)
-  }
-  if err := oprot.WriteFieldEnd(); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T write field end error 1:query_id: ", p), err) }
-  return err
+	if err := oprot.WriteFieldBegin("query_id", thrift.STRUCT, 1); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T write field begin error 1:query_id: ", p), err)
+	}
+	if err := p.QueryID.Write(oprot); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T error writing struct: ", p.QueryID), err)
+	}
+	if err := oprot.WriteFieldEnd(); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T write field end error 1:query_id: ", p), err)
+	}
+	return err
 }
 
 func (p *ImpalaServiceCancelArgs) String() string {
-  if p == nil {
-    return "<nil>"
-  }
-  return fmt.Sprintf("ImpalaServiceCancelArgs(%+v)", *p)
+	if p == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("ImpalaServiceCancelArgs(%+v)", *p)
 }
 
 // Attributes:
 //  - Success
 //  - Error
 type ImpalaServiceCancelResult struct {
-  Success *status.TStatus `thrift:"success,0" db:"success" json:"success,omitempty"`
-  Error *beeswax.BeeswaxException `thrift:"error,1" db:"error" json:"error,omitempty"`
+	Success *status.TStatus           `thrift:"success,0" db:"success" json:"success,omitempty"`
+	Error   *beeswax.BeeswaxException `thrift:"error,1" db:"error" json:"error,omitempty"`
 }
 
 func NewImpalaServiceCancelResult() *ImpalaServiceCancelResult {
-  return &ImpalaServiceCancelResult{}
+	return &ImpalaServiceCancelResult{}
 }
 
 var ImpalaServiceCancelResult_Success_DEFAULT *status.TStatus
+
 func (p *ImpalaServiceCancelResult) GetSuccess() *status.TStatus {
-  if !p.IsSetSuccess() {
-    return ImpalaServiceCancelResult_Success_DEFAULT
-  }
-return p.Success
+	if !p.IsSetSuccess() {
+		return ImpalaServiceCancelResult_Success_DEFAULT
+	}
+	return p.Success
 }
+
 var ImpalaServiceCancelResult_Error_DEFAULT *beeswax.BeeswaxException
+
 func (p *ImpalaServiceCancelResult) GetError() *beeswax.BeeswaxException {
-  if !p.IsSetError() {
-    return ImpalaServiceCancelResult_Error_DEFAULT
-  }
-return p.Error
+	if !p.IsSetError() {
+		return ImpalaServiceCancelResult_Error_DEFAULT
+	}
+	return p.Error
 }
 func (p *ImpalaServiceCancelResult) IsSetSuccess() bool {
-  return p.Success != nil
+	return p.Success != nil
 }
 
 func (p *ImpalaServiceCancelResult) IsSetError() bool {
-  return p.Error != nil
+	return p.Error != nil
 }
 
 func (p *ImpalaServiceCancelResult) Read(iprot thrift.TProtocol) error {
-  if _, err := iprot.ReadStructBegin(); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
-  }
+	if _, err := iprot.ReadStructBegin(); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
+	}
 
-
-  for {
-    _, fieldTypeId, fieldId, err := iprot.ReadFieldBegin()
-    if err != nil {
-      return thrift.PrependError(fmt.Sprintf("%T field %d read error: ", p, fieldId), err)
-    }
-    if fieldTypeId == thrift.STOP { break; }
-    switch fieldId {
-    case 0:
-      if fieldTypeId == thrift.STRUCT {
-        if err := p.ReadField0(iprot); err != nil {
-          return err
-        }
-      } else {
-        if err := iprot.Skip(fieldTypeId); err != nil {
-          return err
-        }
-      }
-    case 1:
-      if fieldTypeId == thrift.STRUCT {
-        if err := p.ReadField1(iprot); err != nil {
-          return err
-        }
-      } else {
-        if err := iprot.Skip(fieldTypeId); err != nil {
-          return err
-        }
-      }
-    default:
-      if err := iprot.Skip(fieldTypeId); err != nil {
-        return err
-      }
-    }
-    if err := iprot.ReadFieldEnd(); err != nil {
-      return err
-    }
-  }
-  if err := iprot.ReadStructEnd(); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
-  }
-  return nil
+	for {
+		_, fieldTypeId, fieldId, err := iprot.ReadFieldBegin()
+		if err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T field %d read error: ", p, fieldId), err)
+		}
+		if fieldTypeId == thrift.STOP {
+			break
+		}
+		switch fieldId {
+		case 0:
+			if fieldTypeId == thrift.STRUCT {
+				if err := p.ReadField0(iprot); err != nil {
+					return err
+				}
+			} else {
+				if err := iprot.Skip(fieldTypeId); err != nil {
+					return err
+				}
+			}
+		case 1:
+			if fieldTypeId == thrift.STRUCT {
+				if err := p.ReadField1(iprot); err != nil {
+					return err
+				}
+			} else {
+				if err := iprot.Skip(fieldTypeId); err != nil {
+					return err
+				}
+			}
+		default:
+			if err := iprot.Skip(fieldTypeId); err != nil {
+				return err
+			}
+		}
+		if err := iprot.ReadFieldEnd(); err != nil {
+			return err
+		}
+	}
+	if err := iprot.ReadStructEnd(); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
+	}
+	return nil
 }
 
-func (p *ImpalaServiceCancelResult)  ReadField0(iprot thrift.TProtocol) error {
-  p.Success = &status.TStatus{}
-  if err := p.Success.Read(iprot); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T error reading struct: ", p.Success), err)
-  }
-  return nil
+func (p *ImpalaServiceCancelResult) ReadField0(iprot thrift.TProtocol) error {
+	p.Success = &status.TStatus{}
+	if err := p.Success.Read(iprot); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T error reading struct: ", p.Success), err)
+	}
+	return nil
 }
 
-func (p *ImpalaServiceCancelResult)  ReadField1(iprot thrift.TProtocol) error {
-  p.Error = &beeswax.BeeswaxException{
-  SQLState: "     ",
-}
-  if err := p.Error.Read(iprot); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T error reading struct: ", p.Error), err)
-  }
-  return nil
+func (p *ImpalaServiceCancelResult) ReadField1(iprot thrift.TProtocol) error {
+	p.Error = &beeswax.BeeswaxException{
+		SQLState: "     ",
+	}
+	if err := p.Error.Read(iprot); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T error reading struct: ", p.Error), err)
+	}
+	return nil
 }
 
 func (p *ImpalaServiceCancelResult) Write(oprot thrift.TProtocol) error {
-  if err := oprot.WriteStructBegin("Cancel_result"); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err) }
-  if p != nil {
-    if err := p.writeField0(oprot); err != nil { return err }
-    if err := p.writeField1(oprot); err != nil { return err }
-  }
-  if err := oprot.WriteFieldStop(); err != nil {
-    return thrift.PrependError("write field stop error: ", err) }
-  if err := oprot.WriteStructEnd(); err != nil {
-    return thrift.PrependError("write struct stop error: ", err) }
-  return nil
+	if err := oprot.WriteStructBegin("Cancel_result"); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err)
+	}
+	if p != nil {
+		if err := p.writeField0(oprot); err != nil {
+			return err
+		}
+		if err := p.writeField1(oprot); err != nil {
+			return err
+		}
+	}
+	if err := oprot.WriteFieldStop(); err != nil {
+		return thrift.PrependError("write field stop error: ", err)
+	}
+	if err := oprot.WriteStructEnd(); err != nil {
+		return thrift.PrependError("write struct stop error: ", err)
+	}
+	return nil
 }
 
 func (p *ImpalaServiceCancelResult) writeField0(oprot thrift.TProtocol) (err error) {
-  if p.IsSetSuccess() {
-    if err := oprot.WriteFieldBegin("success", thrift.STRUCT, 0); err != nil {
-      return thrift.PrependError(fmt.Sprintf("%T write field begin error 0:success: ", p), err) }
-    if err := p.Success.Write(oprot); err != nil {
-      return thrift.PrependError(fmt.Sprintf("%T error writing struct: ", p.Success), err)
-    }
-    if err := oprot.WriteFieldEnd(); err != nil {
-      return thrift.PrependError(fmt.Sprintf("%T write field end error 0:success: ", p), err) }
-  }
-  return err
+	if p.IsSetSuccess() {
+		if err := oprot.WriteFieldBegin("success", thrift.STRUCT, 0); err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T write field begin error 0:success: ", p), err)
+		}
+		if err := p.Success.Write(oprot); err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T error writing struct: ", p.Success), err)
+		}
+		if err := oprot.WriteFieldEnd(); err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T write field end error 0:success: ", p), err)
+		}
+	}
+	return err
 }
 
 func (p *ImpalaServiceCancelResult) writeField1(oprot thrift.TProtocol) (err error) {
-  if p.IsSetError() {
-    if err := oprot.WriteFieldBegin("error", thrift.STRUCT, 1); err != nil {
-      return thrift.PrependError(fmt.Sprintf("%T write field begin error 1:error: ", p), err) }
-    if err := p.Error.Write(oprot); err != nil {
-      return thrift.PrependError(fmt.Sprintf("%T error writing struct: ", p.Error), err)
-    }
-    if err := oprot.WriteFieldEnd(); err != nil {
-      return thrift.PrependError(fmt.Sprintf("%T write field end error 1:error: ", p), err) }
-  }
-  return err
+	if p.IsSetError() {
+		if err := oprot.WriteFieldBegin("error", thrift.STRUCT, 1); err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T write field begin error 1:error: ", p), err)
+		}
+		if err := p.Error.Write(oprot); err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T error writing struct: ", p.Error), err)
+		}
+		if err := oprot.WriteFieldEnd(); err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T write field end error 1:error: ", p), err)
+		}
+	}
+	return err
 }
 
 func (p *ImpalaServiceCancelResult) String() string {
-  if p == nil {
-    return "<nil>"
-  }
-  return fmt.Sprintf("ImpalaServiceCancelResult(%+v)", *p)
+	if p == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("ImpalaServiceCancelResult(%+v)", *p)
 }
 
 // Attributes:
 //  - Handle
 type ImpalaServiceCloseInsertArgs struct {
-  Handle *beeswax.QueryHandle `thrift:"handle,1" db:"handle" json:"handle"`
+	Handle *beeswax.QueryHandle `thrift:"handle,1" db:"handle" json:"handle"`
 }
 
 func NewImpalaServiceCloseInsertArgs() *ImpalaServiceCloseInsertArgs {
-  return &ImpalaServiceCloseInsertArgs{}
+	return &ImpalaServiceCloseInsertArgs{}
 }
 
 var ImpalaServiceCloseInsertArgs_Handle_DEFAULT *beeswax.QueryHandle
+
 func (p *ImpalaServiceCloseInsertArgs) GetHandle() *beeswax.QueryHandle {
-  if !p.IsSetHandle() {
-    return ImpalaServiceCloseInsertArgs_Handle_DEFAULT
-  }
-return p.Handle
+	if !p.IsSetHandle() {
+		return ImpalaServiceCloseInsertArgs_Handle_DEFAULT
+	}
+	return p.Handle
 }
 func (p *ImpalaServiceCloseInsertArgs) IsSetHandle() bool {
-  return p.Handle != nil
+	return p.Handle != nil
 }
 
 func (p *ImpalaServiceCloseInsertArgs) Read(iprot thrift.TProtocol) error {
-  if _, err := iprot.ReadStructBegin(); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
-  }
+	if _, err := iprot.ReadStructBegin(); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
+	}
 
-
-  for {
-    _, fieldTypeId, fieldId, err := iprot.ReadFieldBegin()
-    if err != nil {
-      return thrift.PrependError(fmt.Sprintf("%T field %d read error: ", p, fieldId), err)
-    }
-    if fieldTypeId == thrift.STOP { break; }
-    switch fieldId {
-    case 1:
-      if fieldTypeId == thrift.STRUCT {
-        if err := p.ReadField1(iprot); err != nil {
-          return err
-        }
-      } else {
-        if err := iprot.Skip(fieldTypeId); err != nil {
-          return err
-        }
-      }
-    default:
-      if err := iprot.Skip(fieldTypeId); err != nil {
-        return err
-      }
-    }
-    if err := iprot.ReadFieldEnd(); err != nil {
-      return err
-    }
-  }
-  if err := iprot.ReadStructEnd(); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
-  }
-  return nil
+	for {
+		_, fieldTypeId, fieldId, err := iprot.ReadFieldBegin()
+		if err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T field %d read error: ", p, fieldId), err)
+		}
+		if fieldTypeId == thrift.STOP {
+			break
+		}
+		switch fieldId {
+		case 1:
+			if fieldTypeId == thrift.STRUCT {
+				if err := p.ReadField1(iprot); err != nil {
+					return err
+				}
+			} else {
+				if err := iprot.Skip(fieldTypeId); err != nil {
+					return err
+				}
+			}
+		default:
+			if err := iprot.Skip(fieldTypeId); err != nil {
+				return err
+			}
+		}
+		if err := iprot.ReadFieldEnd(); err != nil {
+			return err
+		}
+	}
+	if err := iprot.ReadStructEnd(); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
+	}
+	return nil
 }
 
-func (p *ImpalaServiceCloseInsertArgs)  ReadField1(iprot thrift.TProtocol) error {
-  p.Handle = &beeswax.QueryHandle{}
-  if err := p.Handle.Read(iprot); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T error reading struct: ", p.Handle), err)
-  }
-  return nil
+func (p *ImpalaServiceCloseInsertArgs) ReadField1(iprot thrift.TProtocol) error {
+	p.Handle = &beeswax.QueryHandle{}
+	if err := p.Handle.Read(iprot); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T error reading struct: ", p.Handle), err)
+	}
+	return nil
 }
 
 func (p *ImpalaServiceCloseInsertArgs) Write(oprot thrift.TProtocol) error {
-  if err := oprot.WriteStructBegin("CloseInsert_args"); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err) }
-  if p != nil {
-    if err := p.writeField1(oprot); err != nil { return err }
-  }
-  if err := oprot.WriteFieldStop(); err != nil {
-    return thrift.PrependError("write field stop error: ", err) }
-  if err := oprot.WriteStructEnd(); err != nil {
-    return thrift.PrependError("write struct stop error: ", err) }
-  return nil
+	if err := oprot.WriteStructBegin("CloseInsert_args"); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err)
+	}
+	if p != nil {
+		if err := p.writeField1(oprot); err != nil {
+			return err
+		}
+	}
+	if err := oprot.WriteFieldStop(); err != nil {
+		return thrift.PrependError("write field stop error: ", err)
+	}
+	if err := oprot.WriteStructEnd(); err != nil {
+		return thrift.PrependError("write struct stop error: ", err)
+	}
+	return nil
 }
 
 func (p *ImpalaServiceCloseInsertArgs) writeField1(oprot thrift.TProtocol) (err error) {
-  if err := oprot.WriteFieldBegin("handle", thrift.STRUCT, 1); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T write field begin error 1:handle: ", p), err) }
-  if err := p.Handle.Write(oprot); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T error writing struct: ", p.Handle), err)
-  }
-  if err := oprot.WriteFieldEnd(); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T write field end error 1:handle: ", p), err) }
-  return err
+	if err := oprot.WriteFieldBegin("handle", thrift.STRUCT, 1); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T write field begin error 1:handle: ", p), err)
+	}
+	if err := p.Handle.Write(oprot); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T error writing struct: ", p.Handle), err)
+	}
+	if err := oprot.WriteFieldEnd(); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T write field end error 1:handle: ", p), err)
+	}
+	return err
 }
 
 func (p *ImpalaServiceCloseInsertArgs) String() string {
-  if p == nil {
-    return "<nil>"
-  }
-  return fmt.Sprintf("ImpalaServiceCloseInsertArgs(%+v)", *p)
+	if p == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("ImpalaServiceCloseInsertArgs(%+v)", *p)
 }
 
 // Attributes:
@@ -825,386 +893,414 @@ func (p *ImpalaServiceCloseInsertArgs) String() string {
 //  - Error
 //  - Error2
 type ImpalaServiceCloseInsertResult struct {
-  Success *TInsertResult_ `thrift:"success,0" db:"success" json:"success,omitempty"`
-  Error *beeswax.QueryNotFoundException `thrift:"error,1" db:"error" json:"error,omitempty"`
-  Error2 *beeswax.BeeswaxException `thrift:"error2,2" db:"error2" json:"error2,omitempty"`
+	Success *TInsertResult_                 `thrift:"success,0" db:"success" json:"success,omitempty"`
+	Error   *beeswax.QueryNotFoundException `thrift:"error,1" db:"error" json:"error,omitempty"`
+	Error2  *beeswax.BeeswaxException       `thrift:"error2,2" db:"error2" json:"error2,omitempty"`
 }
 
 func NewImpalaServiceCloseInsertResult() *ImpalaServiceCloseInsertResult {
-  return &ImpalaServiceCloseInsertResult{}
+	return &ImpalaServiceCloseInsertResult{}
 }
 
 var ImpalaServiceCloseInsertResult_Success_DEFAULT *TInsertResult_
+
 func (p *ImpalaServiceCloseInsertResult) GetSuccess() *TInsertResult_ {
-  if !p.IsSetSuccess() {
-    return ImpalaServiceCloseInsertResult_Success_DEFAULT
-  }
-return p.Success
+	if !p.IsSetSuccess() {
+		return ImpalaServiceCloseInsertResult_Success_DEFAULT
+	}
+	return p.Success
 }
+
 var ImpalaServiceCloseInsertResult_Error_DEFAULT *beeswax.QueryNotFoundException
+
 func (p *ImpalaServiceCloseInsertResult) GetError() *beeswax.QueryNotFoundException {
-  if !p.IsSetError() {
-    return ImpalaServiceCloseInsertResult_Error_DEFAULT
-  }
-return p.Error
+	if !p.IsSetError() {
+		return ImpalaServiceCloseInsertResult_Error_DEFAULT
+	}
+	return p.Error
 }
+
 var ImpalaServiceCloseInsertResult_Error2_DEFAULT *beeswax.BeeswaxException
+
 func (p *ImpalaServiceCloseInsertResult) GetError2() *beeswax.BeeswaxException {
-  if !p.IsSetError2() {
-    return ImpalaServiceCloseInsertResult_Error2_DEFAULT
-  }
-return p.Error2
+	if !p.IsSetError2() {
+		return ImpalaServiceCloseInsertResult_Error2_DEFAULT
+	}
+	return p.Error2
 }
 func (p *ImpalaServiceCloseInsertResult) IsSetSuccess() bool {
-  return p.Success != nil
+	return p.Success != nil
 }
 
 func (p *ImpalaServiceCloseInsertResult) IsSetError() bool {
-  return p.Error != nil
+	return p.Error != nil
 }
 
 func (p *ImpalaServiceCloseInsertResult) IsSetError2() bool {
-  return p.Error2 != nil
+	return p.Error2 != nil
 }
 
 func (p *ImpalaServiceCloseInsertResult) Read(iprot thrift.TProtocol) error {
-  if _, err := iprot.ReadStructBegin(); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
-  }
+	if _, err := iprot.ReadStructBegin(); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
+	}
 
-
-  for {
-    _, fieldTypeId, fieldId, err := iprot.ReadFieldBegin()
-    if err != nil {
-      return thrift.PrependError(fmt.Sprintf("%T field %d read error: ", p, fieldId), err)
-    }
-    if fieldTypeId == thrift.STOP { break; }
-    switch fieldId {
-    case 0:
-      if fieldTypeId == thrift.STRUCT {
-        if err := p.ReadField0(iprot); err != nil {
-          return err
-        }
-      } else {
-        if err := iprot.Skip(fieldTypeId); err != nil {
-          return err
-        }
-      }
-    case 1:
-      if fieldTypeId == thrift.STRUCT {
-        if err := p.ReadField1(iprot); err != nil {
-          return err
-        }
-      } else {
-        if err := iprot.Skip(fieldTypeId); err != nil {
-          return err
-        }
-      }
-    case 2:
-      if fieldTypeId == thrift.STRUCT {
-        if err := p.ReadField2(iprot); err != nil {
-          return err
-        }
-      } else {
-        if err := iprot.Skip(fieldTypeId); err != nil {
-          return err
-        }
-      }
-    default:
-      if err := iprot.Skip(fieldTypeId); err != nil {
-        return err
-      }
-    }
-    if err := iprot.ReadFieldEnd(); err != nil {
-      return err
-    }
-  }
-  if err := iprot.ReadStructEnd(); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
-  }
-  return nil
+	for {
+		_, fieldTypeId, fieldId, err := iprot.ReadFieldBegin()
+		if err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T field %d read error: ", p, fieldId), err)
+		}
+		if fieldTypeId == thrift.STOP {
+			break
+		}
+		switch fieldId {
+		case 0:
+			if fieldTypeId == thrift.STRUCT {
+				if err := p.ReadField0(iprot); err != nil {
+					return err
+				}
+			} else {
+				if err := iprot.Skip(fieldTypeId); err != nil {
+					return err
+				}
+			}
+		case 1:
+			if fieldTypeId == thrift.STRUCT {
+				if err := p.ReadField1(iprot); err != nil {
+					return err
+				}
+			} else {
+				if err := iprot.Skip(fieldTypeId); err != nil {
+					return err
+				}
+			}
+		case 2:
+			if fieldTypeId == thrift.STRUCT {
+				if err := p.ReadField2(iprot); err != nil {
+					return err
+				}
+			} else {
+				if err := iprot.Skip(fieldTypeId); err != nil {
+					return err
+				}
+			}
+		default:
+			if err := iprot.Skip(fieldTypeId); err != nil {
+				return err
+			}
+		}
+		if err := iprot.ReadFieldEnd(); err != nil {
+			return err
+		}
+	}
+	if err := iprot.ReadStructEnd(); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
+	}
+	return nil
 }
 
-func (p *ImpalaServiceCloseInsertResult)  ReadField0(iprot thrift.TProtocol) error {
-  p.Success = &TInsertResult_{}
-  if err := p.Success.Read(iprot); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T error reading struct: ", p.Success), err)
-  }
-  return nil
+func (p *ImpalaServiceCloseInsertResult) ReadField0(iprot thrift.TProtocol) error {
+	p.Success = &TInsertResult_{}
+	if err := p.Success.Read(iprot); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T error reading struct: ", p.Success), err)
+	}
+	return nil
 }
 
-func (p *ImpalaServiceCloseInsertResult)  ReadField1(iprot thrift.TProtocol) error {
-  p.Error = &beeswax.QueryNotFoundException{}
-  if err := p.Error.Read(iprot); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T error reading struct: ", p.Error), err)
-  }
-  return nil
+func (p *ImpalaServiceCloseInsertResult) ReadField1(iprot thrift.TProtocol) error {
+	p.Error = &beeswax.QueryNotFoundException{}
+	if err := p.Error.Read(iprot); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T error reading struct: ", p.Error), err)
+	}
+	return nil
 }
 
-func (p *ImpalaServiceCloseInsertResult)  ReadField2(iprot thrift.TProtocol) error {
-  p.Error2 = &beeswax.BeeswaxException{
-  SQLState: "     ",
-}
-  if err := p.Error2.Read(iprot); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T error reading struct: ", p.Error2), err)
-  }
-  return nil
+func (p *ImpalaServiceCloseInsertResult) ReadField2(iprot thrift.TProtocol) error {
+	p.Error2 = &beeswax.BeeswaxException{
+		SQLState: "     ",
+	}
+	if err := p.Error2.Read(iprot); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T error reading struct: ", p.Error2), err)
+	}
+	return nil
 }
 
 func (p *ImpalaServiceCloseInsertResult) Write(oprot thrift.TProtocol) error {
-  if err := oprot.WriteStructBegin("CloseInsert_result"); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err) }
-  if p != nil {
-    if err := p.writeField0(oprot); err != nil { return err }
-    if err := p.writeField1(oprot); err != nil { return err }
-    if err := p.writeField2(oprot); err != nil { return err }
-  }
-  if err := oprot.WriteFieldStop(); err != nil {
-    return thrift.PrependError("write field stop error: ", err) }
-  if err := oprot.WriteStructEnd(); err != nil {
-    return thrift.PrependError("write struct stop error: ", err) }
-  return nil
+	if err := oprot.WriteStructBegin("CloseInsert_result"); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err)
+	}
+	if p != nil {
+		if err := p.writeField0(oprot); err != nil {
+			return err
+		}
+		if err := p.writeField1(oprot); err != nil {
+			return err
+		}
+		if err := p.writeField2(oprot); err != nil {
+			return err
+		}
+	}
+	if err := oprot.WriteFieldStop(); err != nil {
+		return thrift.PrependError("write field stop error: ", err)
+	}
+	if err := oprot.WriteStructEnd(); err != nil {
+		return thrift.PrependError("write struct stop error: ", err)
+	}
+	return nil
 }
 
 func (p *ImpalaServiceCloseInsertResult) writeField0(oprot thrift.TProtocol) (err error) {
-  if p.IsSetSuccess() {
-    if err := oprot.WriteFieldBegin("success", thrift.STRUCT, 0); err != nil {
-      return thrift.PrependError(fmt.Sprintf("%T write field begin error 0:success: ", p), err) }
-    if err := p.Success.Write(oprot); err != nil {
-      return thrift.PrependError(fmt.Sprintf("%T error writing struct: ", p.Success), err)
-    }
-    if err := oprot.WriteFieldEnd(); err != nil {
-      return thrift.PrependError(fmt.Sprintf("%T write field end error 0:success: ", p), err) }
-  }
-  return err
+	if p.IsSetSuccess() {
+		if err := oprot.WriteFieldBegin("success", thrift.STRUCT, 0); err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T write field begin error 0:success: ", p), err)
+		}
+		if err := p.Success.Write(oprot); err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T error writing struct: ", p.Success), err)
+		}
+		if err := oprot.WriteFieldEnd(); err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T write field end error 0:success: ", p), err)
+		}
+	}
+	return err
 }
 
 func (p *ImpalaServiceCloseInsertResult) writeField1(oprot thrift.TProtocol) (err error) {
-  if p.IsSetError() {
-    if err := oprot.WriteFieldBegin("error", thrift.STRUCT, 1); err != nil {
-      return thrift.PrependError(fmt.Sprintf("%T write field begin error 1:error: ", p), err) }
-    if err := p.Error.Write(oprot); err != nil {
-      return thrift.PrependError(fmt.Sprintf("%T error writing struct: ", p.Error), err)
-    }
-    if err := oprot.WriteFieldEnd(); err != nil {
-      return thrift.PrependError(fmt.Sprintf("%T write field end error 1:error: ", p), err) }
-  }
-  return err
+	if p.IsSetError() {
+		if err := oprot.WriteFieldBegin("error", thrift.STRUCT, 1); err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T write field begin error 1:error: ", p), err)
+		}
+		if err := p.Error.Write(oprot); err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T error writing struct: ", p.Error), err)
+		}
+		if err := oprot.WriteFieldEnd(); err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T write field end error 1:error: ", p), err)
+		}
+	}
+	return err
 }
 
 func (p *ImpalaServiceCloseInsertResult) writeField2(oprot thrift.TProtocol) (err error) {
-  if p.IsSetError2() {
-    if err := oprot.WriteFieldBegin("error2", thrift.STRUCT, 2); err != nil {
-      return thrift.PrependError(fmt.Sprintf("%T write field begin error 2:error2: ", p), err) }
-    if err := p.Error2.Write(oprot); err != nil {
-      return thrift.PrependError(fmt.Sprintf("%T error writing struct: ", p.Error2), err)
-    }
-    if err := oprot.WriteFieldEnd(); err != nil {
-      return thrift.PrependError(fmt.Sprintf("%T write field end error 2:error2: ", p), err) }
-  }
-  return err
+	if p.IsSetError2() {
+		if err := oprot.WriteFieldBegin("error2", thrift.STRUCT, 2); err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T write field begin error 2:error2: ", p), err)
+		}
+		if err := p.Error2.Write(oprot); err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T error writing struct: ", p.Error2), err)
+		}
+		if err := oprot.WriteFieldEnd(); err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T write field end error 2:error2: ", p), err)
+		}
+	}
+	return err
 }
 
 func (p *ImpalaServiceCloseInsertResult) String() string {
-  if p == nil {
-    return "<nil>"
-  }
-  return fmt.Sprintf("ImpalaServiceCloseInsertResult(%+v)", *p)
+	if p == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("ImpalaServiceCloseInsertResult(%+v)", *p)
 }
 
 type ImpalaServicePingImpalaServiceArgs struct {
 }
 
 func NewImpalaServicePingImpalaServiceArgs() *ImpalaServicePingImpalaServiceArgs {
-  return &ImpalaServicePingImpalaServiceArgs{}
+	return &ImpalaServicePingImpalaServiceArgs{}
 }
 
 func (p *ImpalaServicePingImpalaServiceArgs) Read(iprot thrift.TProtocol) error {
-  if _, err := iprot.ReadStructBegin(); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
-  }
+	if _, err := iprot.ReadStructBegin(); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
+	}
 
-
-  for {
-    _, fieldTypeId, fieldId, err := iprot.ReadFieldBegin()
-    if err != nil {
-      return thrift.PrependError(fmt.Sprintf("%T field %d read error: ", p, fieldId), err)
-    }
-    if fieldTypeId == thrift.STOP { break; }
-    if err := iprot.Skip(fieldTypeId); err != nil {
-      return err
-    }
-    if err := iprot.ReadFieldEnd(); err != nil {
-      return err
-    }
-  }
-  if err := iprot.ReadStructEnd(); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
-  }
-  return nil
+	for {
+		_, fieldTypeId, fieldId, err := iprot.ReadFieldBegin()
+		if err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T field %d read error: ", p, fieldId), err)
+		}
+		if fieldTypeId == thrift.STOP {
+			break
+		}
+		if err := iprot.Skip(fieldTypeId); err != nil {
+			return err
+		}
+		if err := iprot.ReadFieldEnd(); err != nil {
+			return err
+		}
+	}
+	if err := iprot.ReadStructEnd(); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
+	}
+	return nil
 }
 
 func (p *ImpalaServicePingImpalaServiceArgs) Write(oprot thrift.TProtocol) error {
-  if err := oprot.WriteStructBegin("PingImpalaService_args"); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err) }
-  if p != nil {
-  }
-  if err := oprot.WriteFieldStop(); err != nil {
-    return thrift.PrependError("write field stop error: ", err) }
-  if err := oprot.WriteStructEnd(); err != nil {
-    return thrift.PrependError("write struct stop error: ", err) }
-  return nil
+	if err := oprot.WriteStructBegin("PingImpalaService_args"); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err)
+	}
+	if p != nil {
+	}
+	if err := oprot.WriteFieldStop(); err != nil {
+		return thrift.PrependError("write field stop error: ", err)
+	}
+	if err := oprot.WriteStructEnd(); err != nil {
+		return thrift.PrependError("write struct stop error: ", err)
+	}
+	return nil
 }
 
 func (p *ImpalaServicePingImpalaServiceArgs) String() string {
-  if p == nil {
-    return "<nil>"
-  }
-  return fmt.Sprintf("ImpalaServicePingImpalaServiceArgs(%+v)", *p)
+	if p == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("ImpalaServicePingImpalaServiceArgs(%+v)", *p)
 }
 
 type ImpalaServicePingImpalaServiceResult struct {
 }
 
 func NewImpalaServicePingImpalaServiceResult() *ImpalaServicePingImpalaServiceResult {
-  return &ImpalaServicePingImpalaServiceResult{}
+	return &ImpalaServicePingImpalaServiceResult{}
 }
 
 func (p *ImpalaServicePingImpalaServiceResult) Read(iprot thrift.TProtocol) error {
-  if _, err := iprot.ReadStructBegin(); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
-  }
+	if _, err := iprot.ReadStructBegin(); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
+	}
 
-
-  for {
-    _, fieldTypeId, fieldId, err := iprot.ReadFieldBegin()
-    if err != nil {
-      return thrift.PrependError(fmt.Sprintf("%T field %d read error: ", p, fieldId), err)
-    }
-    if fieldTypeId == thrift.STOP { break; }
-    if err := iprot.Skip(fieldTypeId); err != nil {
-      return err
-    }
-    if err := iprot.ReadFieldEnd(); err != nil {
-      return err
-    }
-  }
-  if err := iprot.ReadStructEnd(); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
-  }
-  return nil
+	for {
+		_, fieldTypeId, fieldId, err := iprot.ReadFieldBegin()
+		if err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T field %d read error: ", p, fieldId), err)
+		}
+		if fieldTypeId == thrift.STOP {
+			break
+		}
+		if err := iprot.Skip(fieldTypeId); err != nil {
+			return err
+		}
+		if err := iprot.ReadFieldEnd(); err != nil {
+			return err
+		}
+	}
+	if err := iprot.ReadStructEnd(); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
+	}
+	return nil
 }
 
 func (p *ImpalaServicePingImpalaServiceResult) Write(oprot thrift.TProtocol) error {
-  if err := oprot.WriteStructBegin("PingImpalaService_result"); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err) }
-  if p != nil {
-  }
-  if err := oprot.WriteFieldStop(); err != nil {
-    return thrift.PrependError("write field stop error: ", err) }
-  if err := oprot.WriteStructEnd(); err != nil {
-    return thrift.PrependError("write struct stop error: ", err) }
-  return nil
+	if err := oprot.WriteStructBegin("PingImpalaService_result"); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err)
+	}
+	if p != nil {
+	}
+	if err := oprot.WriteFieldStop(); err != nil {
+		return thrift.PrependError("write field stop error: ", err)
+	}
+	if err := oprot.WriteStructEnd(); err != nil {
+		return thrift.PrependError("write struct stop error: ", err)
+	}
+	return nil
 }
 
 func (p *ImpalaServicePingImpalaServiceResult) String() string {
-  if p == nil {
-    return "<nil>"
-  }
-  return fmt.Sprintf("ImpalaServicePingImpalaServiceResult(%+v)", *p)
+	if p == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("ImpalaServicePingImpalaServiceResult(%+v)", *p)
 }
 
-
 type ImpalaHiveServer2Service interface {
-  cli_service.TCLIService
+	cli_service.TCLIService
 
-  ResetCatalog(ctx context.Context) (r *status.TStatus, err error)
+	ResetCatalog(ctx context.Context) (r *status.TStatus, err error)
 }
 
 type ImpalaHiveServer2ServiceClient struct {
-  *cli_service.TCLIServiceClient
+	*cli_service.TCLIServiceClient
 }
 
 func NewImpalaHiveServer2ServiceClientFactory(t thrift.TTransport, f thrift.TProtocolFactory) *ImpalaHiveServer2ServiceClient {
-  return &ImpalaHiveServer2ServiceClient{TCLIServiceClient: cli_service.NewTCLIServiceClientFactory(t, f)}}
+	return &ImpalaHiveServer2ServiceClient{TCLIServiceClient: cli_service.NewTCLIServiceClientFactory(t, f)}
+}
 
 func NewImpalaHiveServer2ServiceClientProtocol(t thrift.TTransport, iprot thrift.TProtocol, oprot thrift.TProtocol) *ImpalaHiveServer2ServiceClient {
-  return &ImpalaHiveServer2ServiceClient{TCLIServiceClient: cli_service.NewTCLIServiceClientProtocol(t, iprot, oprot)}
+	return &ImpalaHiveServer2ServiceClient{TCLIServiceClient: cli_service.NewTCLIServiceClientProtocol(t, iprot, oprot)}
 }
 
 func NewImpalaHiveServer2ServiceClient(c thrift.TClient) *ImpalaHiveServer2ServiceClient {
-  return &ImpalaHiveServer2ServiceClient{
-    TCLIServiceClient: cli_service.NewTCLIServiceClient(c),
-  }
+	return &ImpalaHiveServer2ServiceClient{
+		TCLIServiceClient: cli_service.NewTCLIServiceClient(c),
+	}
 }
 
 func (p *ImpalaHiveServer2ServiceClient) ResetCatalog(ctx context.Context) (r *status.TStatus, err error) {
-  var _args70 ImpalaHiveServer2ServiceResetCatalogArgs
-  var _result71 ImpalaHiveServer2ServiceResetCatalogResult
-  if err = p.Client_().Call(ctx, "ResetCatalog", &_args70, &_result71); err != nil {
-    return
-  }
-  return _result71.GetSuccess(), nil
+	var _args70 ImpalaHiveServer2ServiceResetCatalogArgs
+	var _result71 ImpalaHiveServer2ServiceResetCatalogResult
+	if err = p.Client_().Call(ctx, "ResetCatalog", &_args70, &_result71); err != nil {
+		return
+	}
+	return _result71.GetSuccess(), nil
 }
 
 type ImpalaHiveServer2ServiceProcessor struct {
-  *cli_service.TCLIServiceProcessor
+	*cli_service.TCLIServiceProcessor
 }
 
 func NewImpalaHiveServer2ServiceProcessor(handler ImpalaHiveServer2Service) *ImpalaHiveServer2ServiceProcessor {
-  self72 := &ImpalaHiveServer2ServiceProcessor{cli_service.NewTCLIServiceProcessor(handler)}
-  self72.AddToProcessorMap("ResetCatalog", &impalaHiveServer2ServiceProcessorResetCatalog{handler:handler})
-  return self72
+	self72 := &ImpalaHiveServer2ServiceProcessor{cli_service.NewTCLIServiceProcessor(handler)}
+	self72.AddToProcessorMap("ResetCatalog", &impalaHiveServer2ServiceProcessorResetCatalog{handler: handler})
+	return self72
 }
 
 type impalaHiveServer2ServiceProcessorResetCatalog struct {
-  handler ImpalaHiveServer2Service
+	handler ImpalaHiveServer2Service
 }
 
 func (p *impalaHiveServer2ServiceProcessorResetCatalog) Process(ctx context.Context, seqId int32, iprot, oprot thrift.TProtocol) (success bool, err thrift.TException) {
-  args := ImpalaHiveServer2ServiceResetCatalogArgs{}
-  if err = args.Read(iprot); err != nil {
-    iprot.ReadMessageEnd()
-    x := thrift.NewTApplicationException(thrift.PROTOCOL_ERROR, err.Error())
-    oprot.WriteMessageBegin("ResetCatalog", thrift.EXCEPTION, seqId)
-    x.Write(oprot)
-    oprot.WriteMessageEnd()
-    oprot.Flush(ctx)
-    return false, err
-  }
+	args := ImpalaHiveServer2ServiceResetCatalogArgs{}
+	if err = args.Read(iprot); err != nil {
+		iprot.ReadMessageEnd()
+		x := thrift.NewTApplicationException(thrift.PROTOCOL_ERROR, err.Error())
+		oprot.WriteMessageBegin("ResetCatalog", thrift.EXCEPTION, seqId)
+		x.Write(oprot)
+		oprot.WriteMessageEnd()
+		oprot.Flush(ctx)
+		return false, err
+	}
 
-  iprot.ReadMessageEnd()
-  result := ImpalaHiveServer2ServiceResetCatalogResult{}
-var retval *status.TStatus
-  var err2 error
-  if retval, err2 = p.handler.ResetCatalog(ctx); err2 != nil {
-    x := thrift.NewTApplicationException(thrift.INTERNAL_ERROR, "Internal error processing ResetCatalog: " + err2.Error())
-    oprot.WriteMessageBegin("ResetCatalog", thrift.EXCEPTION, seqId)
-    x.Write(oprot)
-    oprot.WriteMessageEnd()
-    oprot.Flush(ctx)
-    return true, err2
-  } else {
-    result.Success = retval
+	iprot.ReadMessageEnd()
+	result := ImpalaHiveServer2ServiceResetCatalogResult{}
+	var retval *status.TStatus
+	var err2 error
+	if retval, err2 = p.handler.ResetCatalog(ctx); err2 != nil {
+		x := thrift.NewTApplicationException(thrift.INTERNAL_ERROR, "Internal error processing ResetCatalog: "+err2.Error())
+		oprot.WriteMessageBegin("ResetCatalog", thrift.EXCEPTION, seqId)
+		x.Write(oprot)
+		oprot.WriteMessageEnd()
+		oprot.Flush(ctx)
+		return true, err2
+	} else {
+		result.Success = retval
+	}
+	if err2 = oprot.WriteMessageBegin("ResetCatalog", thrift.REPLY, seqId); err2 != nil {
+		err = err2
+	}
+	if err2 = result.Write(oprot); err == nil && err2 != nil {
+		err = err2
+	}
+	if err2 = oprot.WriteMessageEnd(); err == nil && err2 != nil {
+		err = err2
+	}
+	if err2 = oprot.Flush(ctx); err == nil && err2 != nil {
+		err = err2
+	}
+	if err != nil {
+		return
+	}
+	return true, err
 }
-  if err2 = oprot.WriteMessageBegin("ResetCatalog", thrift.REPLY, seqId); err2 != nil {
-    err = err2
-  }
-  if err2 = result.Write(oprot); err == nil && err2 != nil {
-    err = err2
-  }
-  if err2 = oprot.WriteMessageEnd(); err == nil && err2 != nil {
-    err = err2
-  }
-  if err2 = oprot.Flush(ctx); err == nil && err2 != nil {
-    err = err2
-  }
-  if err != nil {
-    return
-  }
-  return true, err
-}
-
 
 // HELPER FUNCTIONS AND STRUCTURES
 
@@ -1212,151 +1308,162 @@ type ImpalaHiveServer2ServiceResetCatalogArgs struct {
 }
 
 func NewImpalaHiveServer2ServiceResetCatalogArgs() *ImpalaHiveServer2ServiceResetCatalogArgs {
-  return &ImpalaHiveServer2ServiceResetCatalogArgs{}
+	return &ImpalaHiveServer2ServiceResetCatalogArgs{}
 }
 
 func (p *ImpalaHiveServer2ServiceResetCatalogArgs) Read(iprot thrift.TProtocol) error {
-  if _, err := iprot.ReadStructBegin(); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
-  }
+	if _, err := iprot.ReadStructBegin(); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
+	}
 
-
-  for {
-    _, fieldTypeId, fieldId, err := iprot.ReadFieldBegin()
-    if err != nil {
-      return thrift.PrependError(fmt.Sprintf("%T field %d read error: ", p, fieldId), err)
-    }
-    if fieldTypeId == thrift.STOP { break; }
-    if err := iprot.Skip(fieldTypeId); err != nil {
-      return err
-    }
-    if err := iprot.ReadFieldEnd(); err != nil {
-      return err
-    }
-  }
-  if err := iprot.ReadStructEnd(); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
-  }
-  return nil
+	for {
+		_, fieldTypeId, fieldId, err := iprot.ReadFieldBegin()
+		if err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T field %d read error: ", p, fieldId), err)
+		}
+		if fieldTypeId == thrift.STOP {
+			break
+		}
+		if err := iprot.Skip(fieldTypeId); err != nil {
+			return err
+		}
+		if err := iprot.ReadFieldEnd(); err != nil {
+			return err
+		}
+	}
+	if err := iprot.ReadStructEnd(); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
+	}
+	return nil
 }
 
 func (p *ImpalaHiveServer2ServiceResetCatalogArgs) Write(oprot thrift.TProtocol) error {
-  if err := oprot.WriteStructBegin("ResetCatalog_args"); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err) }
-  if p != nil {
-  }
-  if err := oprot.WriteFieldStop(); err != nil {
-    return thrift.PrependError("write field stop error: ", err) }
-  if err := oprot.WriteStructEnd(); err != nil {
-    return thrift.PrependError("write struct stop error: ", err) }
-  return nil
+	if err := oprot.WriteStructBegin("ResetCatalog_args"); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err)
+	}
+	if p != nil {
+	}
+	if err := oprot.WriteFieldStop(); err != nil {
+		return thrift.PrependError("write field stop error: ", err)
+	}
+	if err := oprot.WriteStructEnd(); err != nil {
+		return thrift.PrependError("write struct stop error: ", err)
+	}
+	return nil
 }
 
 func (p *ImpalaHiveServer2ServiceResetCatalogArgs) String() string {
-  if p == nil {
-    return "<nil>"
-  }
-  return fmt.Sprintf("ImpalaHiveServer2ServiceResetCatalogArgs(%+v)", *p)
+	if p == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("ImpalaHiveServer2ServiceResetCatalogArgs(%+v)", *p)
 }
 
 // Attributes:
 //  - Success
 type ImpalaHiveServer2ServiceResetCatalogResult struct {
-  Success *status.TStatus `thrift:"success,0" db:"success" json:"success,omitempty"`
+	Success *status.TStatus `thrift:"success,0" db:"success" json:"success,omitempty"`
 }
 
 func NewImpalaHiveServer2ServiceResetCatalogResult() *ImpalaHiveServer2ServiceResetCatalogResult {
-  return &ImpalaHiveServer2ServiceResetCatalogResult{}
+	return &ImpalaHiveServer2ServiceResetCatalogResult{}
 }
 
 var ImpalaHiveServer2ServiceResetCatalogResult_Success_DEFAULT *status.TStatus
+
 func (p *ImpalaHiveServer2ServiceResetCatalogResult) GetSuccess() *status.TStatus {
-  if !p.IsSetSuccess() {
-    return ImpalaHiveServer2ServiceResetCatalogResult_Success_DEFAULT
-  }
-return p.Success
+	if !p.IsSetSuccess() {
+		return ImpalaHiveServer2ServiceResetCatalogResult_Success_DEFAULT
+	}
+	return p.Success
 }
 func (p *ImpalaHiveServer2ServiceResetCatalogResult) IsSetSuccess() bool {
-  return p.Success != nil
+	return p.Success != nil
 }
 
 func (p *ImpalaHiveServer2ServiceResetCatalogResult) Read(iprot thrift.TProtocol) error {
-  if _, err := iprot.ReadStructBegin(); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
-  }
+	if _, err := iprot.ReadStructBegin(); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
+	}
 
-
-  for {
-    _, fieldTypeId, fieldId, err := iprot.ReadFieldBegin()
-    if err != nil {
-      return thrift.PrependError(fmt.Sprintf("%T field %d read error: ", p, fieldId), err)
-    }
-    if fieldTypeId == thrift.STOP { break; }
-    switch fieldId {
-    case 0:
-      if fieldTypeId == thrift.STRUCT {
-        if err := p.ReadField0(iprot); err != nil {
-          return err
-        }
-      } else {
-        if err := iprot.Skip(fieldTypeId); err != nil {
-          return err
-        }
-      }
-    default:
-      if err := iprot.Skip(fieldTypeId); err != nil {
-        return err
-      }
-    }
-    if err := iprot.ReadFieldEnd(); err != nil {
-      return err
-    }
-  }
-  if err := iprot.ReadStructEnd(); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
-  }
-  return nil
+	for {
+		_, fieldTypeId, fieldId, err := iprot.ReadFieldBegin()
+		if err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T field %d read error: ", p, fieldId), err)
+		}
+		if fieldTypeId == thrift.STOP {
+			break
+		}
+		switch fieldId {
+		case 0:
+			if fieldTypeId == thrift.STRUCT {
+				if err := p.ReadField0(iprot); err != nil {
+					return err
+				}
+			} else {
+				if err := iprot.Skip(fieldTypeId); err != nil {
+					return err
+				}
+			}
+		default:
+			if err := iprot.Skip(fieldTypeId); err != nil {
+				return err
+			}
+		}
+		if err := iprot.ReadFieldEnd(); err != nil {
+			return err
+		}
+	}
+	if err := iprot.ReadStructEnd(); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
+	}
+	return nil
 }
 
-func (p *ImpalaHiveServer2ServiceResetCatalogResult)  ReadField0(iprot thrift.TProtocol) error {
-  p.Success = &status.TStatus{}
-  if err := p.Success.Read(iprot); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T error reading struct: ", p.Success), err)
-  }
-  return nil
+func (p *ImpalaHiveServer2ServiceResetCatalogResult) ReadField0(iprot thrift.TProtocol) error {
+	p.Success = &status.TStatus{}
+	if err := p.Success.Read(iprot); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T error reading struct: ", p.Success), err)
+	}
+	return nil
 }
 
 func (p *ImpalaHiveServer2ServiceResetCatalogResult) Write(oprot thrift.TProtocol) error {
-  if err := oprot.WriteStructBegin("ResetCatalog_result"); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err) }
-  if p != nil {
-    if err := p.writeField0(oprot); err != nil { return err }
-  }
-  if err := oprot.WriteFieldStop(); err != nil {
-    return thrift.PrependError("write field stop error: ", err) }
-  if err := oprot.WriteStructEnd(); err != nil {
-    return thrift.PrependError("write struct stop error: ", err) }
-  return nil
+	if err := oprot.WriteStructBegin("ResetCatalog_result"); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err)
+	}
+	if p != nil {
+		if err := p.writeField0(oprot); err != nil {
+			return err
+		}
+	}
+	if err := oprot.WriteFieldStop(); err != nil {
+		return thrift.PrependError("write field stop error: ", err)
+	}
+	if err := oprot.WriteStructEnd(); err != nil {
+		return thrift.PrependError("write struct stop error: ", err)
+	}
+	return nil
 }
 
 func (p *ImpalaHiveServer2ServiceResetCatalogResult) writeField0(oprot thrift.TProtocol) (err error) {
-  if p.IsSetSuccess() {
-    if err := oprot.WriteFieldBegin("success", thrift.STRUCT, 0); err != nil {
-      return thrift.PrependError(fmt.Sprintf("%T write field begin error 0:success: ", p), err) }
-    if err := p.Success.Write(oprot); err != nil {
-      return thrift.PrependError(fmt.Sprintf("%T error writing struct: ", p.Success), err)
-    }
-    if err := oprot.WriteFieldEnd(); err != nil {
-      return thrift.PrependError(fmt.Sprintf("%T write field end error 0:success: ", p), err) }
-  }
-  return err
+	if p.IsSetSuccess() {
+		if err := oprot.WriteFieldBegin("success", thrift.STRUCT, 0); err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T write field begin error 0:success: ", p), err)
+		}
+		if err := p.Success.Write(oprot); err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T error writing struct: ", p.Success), err)
+		}
+		if err := oprot.WriteFieldEnd(); err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T write field end error 0:success: ", p), err)
+		}
+	}
+	return err
 }
 
 func (p *ImpalaHiveServer2ServiceResetCatalogResult) String() string {
-  if p == nil {
-    return "<nil>"
-  }
-  return fmt.Sprintf("ImpalaHiveServer2ServiceResetCatalogResult(%+v)", *p)
+	if p == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("ImpalaHiveServer2ServiceResetCatalogResult(%+v)", *p)
 }
-
-

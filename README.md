@@ -6,9 +6,9 @@ As far as we know, this is the only pure golang driver for Apache Impala that ha
 
 The current implementation of the driver is based on the Hive Server 2 protocol. 
 
-**The legacy Beeswax protocol based driver is available at [go-impala v1.0.0](https://github.com/bippio/go-impala/tree/v1.0.0), which is marked deprecated and will no longer be maintained.**
+**The legacy Beeswax protocol based driver is available at [go-impala v1.0.0](https://github.com/mangup/go-impala/tree/v1.0.0), which is marked deprecated and will no longer be maintained.**
 
-*If you are using Go 1.12 or later, you can get the v1.0.0 of the driver with ***go get github.com/bippio/go-impala@v1.0.0*** or use a dependency management tool such as [dep](https://golang.github.io/dep/])*
+*If you are using Go 1.12 or later, you can get the v1.0.0 of the driver with ***go get github.com/mangup/go-impala@v1.0.0*** or use a dependency management tool such as [dep](https://golang.github.io/dep/])*
 
 We at [Bipp](http://www.bipp.io), want to make large scale data analytics accesible to every business user.
 
@@ -19,7 +19,7 @@ Issues and contributions are welcome.
 
 ## Install
 
-go get github.com/bippio/go-impala
+go get github.com/mangup/go-impala
 
 
 ## Connection Parameters and DSN
@@ -76,7 +76,7 @@ import (
 	"database/sql"
 	"log"
 
-	impala "github.com/bippio/go-impala"
+	impala "github.com/mangup/go-impala"
 )
 
 func main() {

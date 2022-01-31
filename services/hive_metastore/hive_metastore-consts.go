@@ -6,11 +6,10 @@ package hive_metastore
 import (
 	"bytes"
 	"context"
-	"reflect"
 	"fmt"
 	"github.com/apache/thrift/lib/go/thrift"
-	"github.com/bippio/go-impala/services/fb303"
-
+	"github.com/mangup/go-impala/services/fb303"
+	"reflect"
 )
 
 // (needed to ensure safety because of naive import list construction.)
@@ -21,6 +20,7 @@ var _ = reflect.DeepEqual
 var _ = bytes.Equal
 
 var _ = fb303.GoUnusedProtection__
+
 const DDL_TIME = "transient_lastDdlTime"
 const IS_ARCHIVED = "is_archived"
 const ORIGINAL_LOCATION = "original_location"
@@ -40,4 +40,3 @@ const META_TABLE_STORAGE = "storage_handler"
 
 func init() {
 }
-
