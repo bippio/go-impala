@@ -7,7 +7,7 @@ import (
 	"database/sql"
 	"log"
 
-	impala "github.com/bippio/go-impala"
+	impala "github.com/jrbrinlee1/go-impala"
 )
 
 func main() {
