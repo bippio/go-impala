@@ -6,7 +6,7 @@ import (
 	"strconv"
 
 	"github.com/apache/thrift/lib/go/thrift"
-	"github.com/bippio/go-impala/services/cli_service"
+	"github.com/jrbrinlee1/go-impala/services/cli_service"
 )
 
 // Client represents Hive Client
@@ -36,7 +36,7 @@ func NewClient(client thrift.TClient, log *log.Logger, opts *Options) *Client {
 func (c *Client) OpenSession(ctx context.Context) (*Session, error) {
 
 	cfg := map[string]string{
-		"MEM_LIMIT":     c.opts.MemLimit,
+		"MEM_LIMIT":       c.opts.MemLimit,
 		"QUERY_TIMEOUT_S": strconv.Itoa(c.opts.QueryTimeout),
 	}
 

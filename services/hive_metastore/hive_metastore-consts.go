@@ -9,7 +9,7 @@ import (
 	"reflect"
 	"fmt"
 	"github.com/apache/thrift/lib/go/thrift"
-	"github.com/bippio/go-impala/services/fb303"
+	"github.com/jrbrinlee1/go-impala/services/fb303"
 
 )
 

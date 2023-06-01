@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/bippio/go-impala/services/cli_service"
+	"github.com/jrbrinlee1/go-impala/services/cli_service"
 )
 
 // Operation represents hive operation

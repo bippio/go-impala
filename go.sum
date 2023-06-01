@@ -1,4 +1,4 @@
 github.com/apache/thrift v0.18.1 h1:lNhK/1nqjbwbiOPDBPFJVKxgDEGSepKuTh6OLiXW8kg=
 github.com/apache/thrift v0.18.1/go.mod h1:rdQn/dCcDKEWjjylUeueum4vQEjG2v8v2PqriUnbr+I=
-github.com/bippio/go-impala v2.1.0+incompatible h1:H/N1Ms5KhVa2IoRZ6NO9ZzBryfTGhNiLG/zmNXS0CHY=
-github.com/bippio/go-impala v2.1.0+incompatible/go.mod h1:lcyV/9s/ri5lFj3zdyyneQwDso8/Fd62fELt05Wts8g=
+github.com/jrbrinlee1/go-impala v2.1.0+incompatible h1:H/N1Ms5KhVa2IoRZ6NO9ZzBryfTGhNiLG/zmNXS0CHY=
+github.com/jrbrinlee1/go-impala v2.1.0+incompatible/go.mod h1:lcyV/9s/ri5lFj3zdyyneQwDso8/Fd62fELt05Wts8g=
