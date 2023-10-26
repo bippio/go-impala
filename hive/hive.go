@@ -28,6 +28,10 @@ func checkStatus(resp interface{}) error {
 		if status.StatusCode == cli_service.TStatusCode_INVALID_HANDLE_STATUS {
 			return errors.New("thrift: invalid handle")
 		}
+		// Impala4.0 may return this status
+		if status.StatusCode == cli_service.TStatusCode_STILL_EXECUTING_STATUS {
+			return errors.New("thrift: STILL_EXECUTING")
+		}
 
 		// SUCCESS, SUCCESS_WITH_INFO, STILL_EXECUTING are ok
 		return nil

@@ -3,6 +3,7 @@ package hive
 import (
 	"context"
 	"strings"
+	"time"
 
 	"github.com/bippio/go-impala/services/cli_service"
 )
@@ -88,16 +89,23 @@ func fetch(ctx context.Context, op *Operation, schema *TableSchema) (*cli_servic
 
 	op.hive.log.Printf("fetch results for operation: %v", guid(op.h.OperationId.GUID))
 
-	resp, err := op.hive.client.FetchResults(ctx, &req)
-	if err != nil {
-		return nil, err
-	}
-	if err := checkStatus(resp); err != nil {
-		return nil, err
-	}
+	for {
+		resp, err := op.hive.client.FetchResults(ctx, &req)
+		if err != nil {
+			return nil, err
+		}
 
-	op.hive.log.Printf("results: %v", resp.Results)
-	return resp, nil
+		if err := checkStatus(resp); err != nil {
+			// STILL_ EXECUTING is not a failure and needs to be retried
+			if err.Error() == "thrift: STILL_EXECUTING" {
+				time.Sleep(time.Millisecond * 10)
+				continue
+			}
+			return nil, err
+		}
+		op.hive.log.Printf("results: %v", resp.Results)
+		return resp, nil
+	}
 }
 
 // Close closes operation
